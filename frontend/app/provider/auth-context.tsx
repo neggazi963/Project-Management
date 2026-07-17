@@ -27,10 +27,22 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   useEffect(() => {
     const checkAuth = async () => {
       setIsLoading(true);
-      const userInfo = localStorage.getItem("token");
-      if (userInfo) {
-        setUser(JSON.parse(userInfo));
-        setIsAuthenticated(true);
+      const token = localStorage.getItem("token");
+      const userInfo = localStorage.getItem("user");
+
+      if (token && userInfo) {
+        try {
+          setUser(JSON.parse(userInfo));
+          setIsAuthenticated(true);
+        } catch (error) {
+          console.error("Failed to parse user info:", error);
+          localStorage.removeItem("token");
+          localStorage.removeItem("user");
+          setIsAuthenticated(false);
+          if (!isPublicRoute) {
+            navigate("/sign-in");
+          }
+        }
       } else {
         setIsAuthenticated(false);
         if (!isPublicRoute) {
