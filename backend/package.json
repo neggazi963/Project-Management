@@ -12,6 +12,9 @@
     "dev": "nodemon index.js"
   },
   "dependencies": {
+    "@arcjet/inspect": "^1.9.1",
+    "@arcjet/node": "^1.9.1",
+    "@sendgrid/mail": "^8.1.6",
     "bcrypt": "^6.0.0",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
@@ -19,6 +22,7 @@
     "jsonwebtoken": "^9.0.3",
     "mongoose": "^9.7.4",
     "morgan": "^1.11.0",
+    "nodemailer": "^9.0.3",
     "zod": "^3.25.76",
     "zod-express-middleware": "^1.4.0"
   },

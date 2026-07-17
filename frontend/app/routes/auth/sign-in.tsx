@@ -12,16 +12,20 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import {
-  Field,
-  FieldLabel,
-  FieldError,
-} from "@/components/ui/field";
+import { Field, FieldLabel, FieldError } from "@/components/ui/field";
 import { Link } from "react-router";
+import { useLoginMutation } from "@/hooks/use-auth";
+import { toast } from "sonner";
+import { useNavigate } from "react-router";
+import { Loader, Loader2 } from "lucide-react";
+
+import { useAuth } from "@/provider/auth-context";
 
 type SigninFormData = z.infer<typeof signInSchema>;
 
 function SignIn() {
+  const navigate = useNavigate();
+  const { login } = useAuth();
   const form = useForm<SigninFormData>({
     resolver: zodResolver(signInSchema),
     defaultValues: {
@@ -30,8 +34,22 @@ function SignIn() {
     },
   });
 
+  const { mutate, isPending } = useLoginMutation();
+
   const handleOnSubmit = (values: SigninFormData) => {
-    console.log(values);
+    mutate(values, {
+      onSuccess: (data) => {
+        login(data);
+        console.log(data);
+        toast.success("Login successful");
+        navigate("/dashboard");
+      },
+      onError: (error: any) => {
+        const errorMessage = error.response?.data?.error || error.message;
+        console.log(error);
+        toast.error(errorMessage);
+      },
+    });
   };
 
   return (
@@ -75,7 +93,12 @@ function SignIn() {
                 <Field data-invalid={fieldState.invalid}>
                   <div className="flex items-center justify-between">
                     <FieldLabel htmlFor={field.name}>Password</FieldLabel>
-                    <Link to="/forgot-password" className="text-sm text-muted-foreground hover:underline">Forgot Password?</Link>
+                    <Link
+                      to="/forgot-password"
+                      className="text-sm text-muted-foreground hover:underline"
+                    >
+                      Forgot Password?
+                    </Link>
                   </div>
                   <Input
                     {...field}
@@ -91,14 +114,17 @@ function SignIn() {
               )}
             />
 
-            <Button type="submit" className="w-full">
-              Sign In
+            <Button type="submit" className="w-full" disabled={isPending}>
+              {isPending ? <Loader2 className="mr-2 h-4 w-4 " /> : "Sign In"}
             </Button>
           </form>
           <CardFooter className="flex justify-center mt-6 items-center">
             <div className="flex items-center justify-center">
-              <p className="text-sm text-muted-foreground">Don&apos;t have an account?{" "}
-                <Link to="/sign-up" className="hover:underline">Sign Up</Link>
+              <p className="text-sm text-muted-foreground">
+                Don&apos;t have an account?{" "}
+                <Link to="/sign-up" className="hover:underline">
+                  Sign Up
+                </Link>
               </p>
             </div>
           </CardFooter>

@@ -16,6 +16,7 @@ import { Field, FieldLabel, FieldError } from "@/components/ui/field";
 import { Link } from "react-router";
 import { useSignUpMutation } from "@/hooks/use-auth";
 import { toast } from "sonner";
+import { useNavigate } from "react-router";
 
 export type SignUpFormData = z.infer<typeof signUpSchema>;
 
@@ -31,11 +32,17 @@ function SignUp() {
   });
 
   const { mutate, isPending } = useSignUpMutation();
+  const navigate = useNavigate();
 
   const handleOnSubmit = (values: SignUpFormData) => {
     mutate(values, {
       onSuccess: () => {
-        toast.success("Account created successfully");
+        toast.success("Email Verification Required", {
+          description: "Please check your email to verify your account",
+        });
+
+        form.reset();
+        navigate("/sign-in");
       },
       onError: (error: any) => {
         const errorMessage = error.response?.data?.error || error.message;

@@ -1,13 +1,14 @@
-import cors from "cors";
 import dotenv from "dotenv";
+dotenv.config();
+
+import cors from "cors";
 import express from "express";
 import mongoose from "mongoose";
 import morgan from "morgan";
-import routes from "./routes/index.route.js";
 import dns from "dns";
-dns.setServers(["8.8.8.8", "8.8.4.4"]); // Use Google's public DNS servers
+import routes from "./routes/index.route.js";
 
-dotenv.config();
+dns.setServers(["8.8.8.8", "8.8.4.4"]);
 
 const app = express();
 
