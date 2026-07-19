@@ -5,10 +5,21 @@ import { Header } from "@/components/layout/header";
 import { useState } from "react";
 import type { Workspace } from "@/types";
 import { SidebarComponent } from "@/components/layout/SidebarComponent";
+import { CreateWorkspace } from "@/components/workspace/create-workspace";
+import { fetchtData } from "@/lib/fetch-util";
+
+export const clientLoader = async () => {
+  try {
+    const [workspaces] = await Promise.all([fetchtData("/workspaces")]);
+    return { workspaces };
+  } catch (error) {
+    console.log(error);
+  }
+};
 
 function DashboardLayout() {
   const { isAuthenticated, isLoading } = useAuth();
-  const [, setIsCreatingWorkspace] = useState(false);
+  const [isCreatingWorkspace, setIsCreatingWorkspace] = useState(false);
   const [currentWorkspace, setCurrentWorkspace] = useState<Workspace | null>(
     null,
   );
@@ -45,6 +56,10 @@ function DashboardLayout() {
           </div>
         </main>
       </div>
+      <CreateWorkspace
+        isCreatingWorkspace={isCreatingWorkspace}
+        setIsCreatingWorkspace={setIsCreatingWorkspace}
+      />
     </div>
   );
 }

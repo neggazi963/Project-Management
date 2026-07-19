@@ -12,7 +12,7 @@ import {
   DropdownMenuGroup,
 } from "../ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
-import { Link } from "react-router";
+import { Link, useLoaderData } from "react-router";
 import { WorkspaceAvatar } from "../workspace/workspace-avatar";
 
 interface HeaderProps {
@@ -27,7 +27,7 @@ export const Header = ({
   onCreateWorkspace,
 }: HeaderProps) => {
   const { user, logout } = useAuth();
-  const workspaces: Workspace[] = [];
+  const { workspaces } = useLoaderData() as { workspaces: Workspace[] };
 
   return (
     <div className="bg-background sticky top-0 z-40 border-b">
@@ -110,9 +110,7 @@ export const Header = ({
                 render={<Link to="/user/profile">Profile</Link>}
               />
               <DropdownMenuSeparator />
-              <DropdownMenuItem  onClick={logout}>
-                Log out
-              </DropdownMenuItem>
+              <DropdownMenuItem onClick={logout}>Log out</DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
