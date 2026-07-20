@@ -1,6 +1,6 @@
 import { useAuth } from "@/provider/auth-context";
 import { Navigate, Outlet } from "react-router";
-import { Loader } from "@/components/ui/loader";
+import { Loader } from "@/components/loader";
 import { Header } from "@/components/layout/header";
 import { useState } from "react";
 import type { Workspace } from "@/types";
