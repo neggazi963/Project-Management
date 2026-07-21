@@ -6,14 +6,15 @@ import { useState } from "react";
 import type { Workspace } from "@/types";
 import { SidebarComponent } from "@/components/layout/SidebarComponent";
 import { CreateWorkspace } from "@/components/workspace/create-workspace";
-import { fetchtData } from "@/lib/fetch-util";
+import { fetchData } from "@/lib/fetch-util";
 
 export const clientLoader = async () => {
   try {
-    const [workspaces] = await Promise.all([fetchtData("/workspaces")]);
+    const [workspaces] = await Promise.all([fetchData("/workspaces")]);
     return { workspaces };
   } catch (error) {
     console.log(error);
+    return { workspaces: [] }; 
   }
 };
 

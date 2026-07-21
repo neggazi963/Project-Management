@@ -32,7 +32,7 @@ const postData = async <T>(path: string, data: unknown): Promise<T> => {
   const response = await api.post(path, data);
   return response.data;
 };
-const fetchtData = async <T>(path: string): Promise<T> => {
+const fetchData = async <T>(path: string): Promise<T> => {
   const response = await api.get(path);
   return response.data;
 };
@@ -47,4 +47,4 @@ const deleteData = async <T>(path: string): Promise<T> => {
   return response.data;
 };
 
-export { postData, fetchtData, updateData, deleteData };
+export { postData, fetchData, updateData, deleteData };

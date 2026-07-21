@@ -2,6 +2,8 @@ import express from "express";
 import {
   createWorkspace,
   getWorkspaces,
+  getWorkspacesDetails,
+  getWorkspacesProjects,
 } from "../controllers/workspace.controller.js";
 import { validateRequest } from "zod-express-middleware";
 import { workspaceSchema } from "../libs/validate-schema.js";
@@ -17,5 +19,8 @@ router.post(
 );
 
 router.get("/", authMiddleware, getWorkspaces);
+
+router.get("/:workspaceId", authMiddleware, getWorkspacesDetails);
+router.get("/:workspaceId/projects", authMiddleware, getWorkspacesProjects);
 
 export default router;

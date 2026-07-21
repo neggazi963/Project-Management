@@ -18,11 +18,14 @@ import { format } from "date-fns";
 
 const Workspaces = () => {
   const [isCreatingWorkspace, setIsCreatingWorkspace] = useState(false);
-  const { data: workspaces, isLoading } = useGetWorkspacesQuery() as {
-    data: Workspace[];
-    isLoading: boolean;
+  const { data: workspaces, isPending } = useGetWorkspacesQuery() as {
+    data: Workspace[] | undefined;
+    isPending: boolean;
   };
-  if (isLoading) return <Loader />;
+
+  if (isPending) return <Loader />;
+
+  const workspaceList = workspaces ?? [];
   return (
     <>
       <div className="space-y-8">
@@ -34,11 +37,11 @@ const Workspaces = () => {
           </Button>
         </div>
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {workspaces.map((ws) => (
+          {workspaceList.map((ws) => (
             <WorkspaceCard key={ws._id} workspace={ws} />
           ))}
 
-          {workspaces.length === 0 && (
+          {workspaceList.length === 0 && (
             <NoDataFound
               title="No Workspaces found"
               description="Create a new workspace to get started."
