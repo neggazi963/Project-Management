@@ -9,12 +9,16 @@ import {
 } from "@/components/ui/card";
 import { CreateWorkspace } from "@/components/workspace/create-workspace";
 import { WorkspaceAvatar } from "@/components/workspace/workspace-avatar";
-import { useGetWorkspacesQuery } from "@/hooks/use-workspace";
+import {
+  useDeleteWorkspaceMutation,
+  useGetWorkspacesQuery,
+} from "@/hooks/use-workspace";
 import type { Workspace } from "@/types";
-import { Loader, PlusCircle, Users } from "lucide-react";
+import { Loader, PlusCircle, Trash2, Users } from "lucide-react";
 import { useState } from "react";
 import { Link } from "react-router";
 import { format } from "date-fns";
+import { toast } from "sonner";
 
 const Workspaces = () => {
   const [isCreatingWorkspace, setIsCreatingWorkspace] = useState(false);
@@ -61,11 +65,50 @@ const Workspaces = () => {
 };
 
 const WorkspaceCard = ({ workspace }: { workspace: Workspace }) => {
+  const { mutate: deleteWorkspace, isPending: isDeleting } =
+    useDeleteWorkspaceMutation();
+
+  const handleDeleteWorkspace = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    const confirmed = window.confirm(
+      `Delete "${workspace.name}"? This will delete all its projects and tasks. This action cannot be undone.`,
+    );
+    if (!confirmed) return;
+
+    deleteWorkspace(
+      { workspaceId: workspace._id },
+      {
+        onSuccess: () => {
+          toast.success("Workspace deleted");
+        },
+        onError: (error: any) => {
+          const errorMessage =
+            error.response?.data?.error || "Failed to delete workspace";
+          toast.error(errorMessage);
+        },
+      },
+    );
+  };
+
   return (
     <Link to={`/workspaces/${workspace._id}`} className="group">
-      <Card className="transition-all hover:shadow-md hover:-translate-y-1">
+      <Card className="relative transition-all hover:shadow-md hover:-translate-y-1">
+        <Button
+          variant="ghost"
+          size="icon"
+          className="absolute top-3 right-3 size-7 text-muted-foreground hover:text-destructive"
+          disabled={isDeleting}
+          onClick={handleDeleteWorkspace}
+          title="Delete Workspace"
+        >
+          <Trash2 className="size-4" />
+          <span className="sr-only">Delete Workspace</span>
+        </Button>
+
         <CardHeader className="pb-2">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between pr-8">
             <div className="flex  gap-2">
               <WorkspaceAvatar name={workspace.name} color={workspace.color} />
               <div>

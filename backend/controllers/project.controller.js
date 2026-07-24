@@ -123,4 +123,49 @@ const getProjectTasks = async (req, res) => {
   }
 };
 
-export { createProject, getProjectDetails, getProjectTasks };
+const deleteProject = async (req, res) => {
+  try {
+    const { projectId } = req.params;
+
+    const project = await Project.findById(projectId);
+
+    if (!project) {
+      return res.status(404).json({
+        message: "Project not found",
+      });
+    }
+
+    const isMember = project.members.some(
+      (member) => member.user.toString() === req.user._id.toString(),
+    );
+
+    if (!isMember) {
+      return res.status(403).json({
+        message: "You are not a member of this project",
+      });
+    }
+
+    // TODO: later restrict this action to project.createdBy only
+
+    // Remove all tasks linked to this project so they don't become orphaned
+    await Task.deleteMany({ project: projectId });
+
+    // Remove the project reference from its workspace
+    await Workspace.findByIdAndUpdate(project.workspace, {
+      $pull: { projects: project._id },
+    });
+
+    await project.deleteOne();
+
+    return res.status(200).json({
+      message: "Project deleted successfully",
+    });
+  } catch (error) {
+    console.log(error);
+    return res.status(500).json({
+      message: "Internal server error",
+    });
+  }
+};
+
+export { createProject, getProjectDetails, getProjectTasks, deleteProject };

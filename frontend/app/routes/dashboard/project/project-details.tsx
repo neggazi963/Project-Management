@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { UseProjectQuery } from "@/hooks/use-project";
+import { useUpdateTaskStatusMutation } from "@/hooks/use-task";
 import { getProjectProgress } from "@/lib";
 import { cn } from "@/lib/utils";
 import type { Project, Task, TaskStatus } from "@/types";
@@ -15,6 +16,21 @@ import { format } from "date-fns";
 import { AlertCircle, Calendar, CheckCircle, Clock } from "lucide-react";
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router";
+import { toast } from "sonner";
+import { useQueryClient } from "@tanstack/react-query";
+import {
+  DndContext,
+  DragOverlay,
+  PointerSensor,
+  useDraggable,
+  useDroppable,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+  type DragStartEvent,
+} from "@dnd-kit/core";
+
+const STATUSES: TaskStatus[] = ["To Do", "In Progress", "Done"];
 
 const ProjectDetails = () => {
   const { projectId, workspaceId } = useParams<{
@@ -22,9 +38,11 @@ const ProjectDetails = () => {
     workspaceId: string;
   }>();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
 
   const [isCreateTask, setIsCreateTask] = useState(false);
   const [taskFilter, setTaskFilter] = useState<TaskStatus | "All">("All");
+  const [activeTask, setActiveTask] = useState<Task | null>(null);
 
   const { data, isLoading } = UseProjectQuery(projectId!) as {
     data: {
@@ -33,6 +51,14 @@ const ProjectDetails = () => {
     };
     isLoading: boolean;
   };
+
+  const { mutate: updateTaskStatus } = useUpdateTaskStatusMutation();
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: { distance: 5 },
+    }),
+  );
 
   if (isLoading)
     return (
@@ -47,6 +73,39 @@ const ProjectDetails = () => {
   const handleTaskClick = (taskId: string) => {
     navigate(
       `/workspaces/${workspaceId}/projects/${projectId}/tasks/${taskId}`,
+    );
+  };
+
+  const handleDragStart = (event: DragStartEvent) => {
+    const task = tasks.find((t) => t._id === event.active.id);
+    setActiveTask(task || null);
+  };
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    setActiveTask(null);
+
+    const { active, over } = event;
+    if (!over) return;
+
+    const taskId = active.id as string;
+    const newStatus = over.id as TaskStatus;
+
+    const task = tasks.find((t) => t._id === taskId);
+    if (!task || task.status === newStatus) return;
+
+    updateTaskStatus(
+      { taskId, status: newStatus },
+      {
+        onSuccess: () => {
+          toast.success("Task status updated");
+          queryClient.invalidateQueries({ queryKey: ["project"] });
+        },
+        onError: (error: any) => {
+          const errorMessage =
+            error.response?.data?.error || "Failed to update task status";
+          toast.error(errorMessage);
+        },
+      },
     );
   };
 
@@ -117,34 +176,40 @@ const ProjectDetails = () => {
           </div>
 
           <TabsContent value="all" className="m-0">
-            <div className="grid grid-cols-3 gap-4">
-              <TaskColumn
-                title="To Do"
-                tasks={tasks.filter((task) => task.status === "To Do")}
-                onTaskClick={handleTaskClick}
-              />
+            <DndContext
+              sensors={sensors}
+              onDragStart={handleDragStart}
+              onDragEnd={handleDragEnd}
+            >
+              <div className="grid grid-cols-3 gap-4">
+                {STATUSES.map((status) => (
+                  <TaskColumn
+                    key={status}
+                    status={status}
+                    title={status}
+                    tasks={tasks.filter((task) => task.status === status)}
+                    onTaskClick={handleTaskClick}
+                  />
+                ))}
+              </div>
 
-              <TaskColumn
-                title="In Progress"
-                tasks={tasks.filter((task) => task.status === "In Progress")}
-                onTaskClick={handleTaskClick}
-              />
-
-              <TaskColumn
-                title="Done"
-                tasks={tasks.filter((task) => task.status === "Done")}
-                onTaskClick={handleTaskClick}
-              />
-            </div>
+              <DragOverlay>
+                {activeTask ? (
+                  <TaskCardContent task={activeTask} dragOverlay />
+                ) : null}
+              </DragOverlay>
+            </DndContext>
           </TabsContent>
 
           <TabsContent value="todo" className="m-0">
             <div className="grid md:grid-cols-1 gap-4">
               <TaskColumn
+                status="To Do"
                 title="To Do"
                 tasks={tasks.filter((task) => task.status === "To Do")}
                 onTaskClick={handleTaskClick}
                 isFullWidth
+                draggable={false}
               />
             </div>
           </TabsContent>
@@ -152,10 +217,12 @@ const ProjectDetails = () => {
           <TabsContent value="in-progress" className="m-0">
             <div className="grid md:grid-cols-1 gap-4">
               <TaskColumn
+                status="In Progress"
                 title="In Progress"
                 tasks={tasks.filter((task) => task.status === "In Progress")}
                 onTaskClick={handleTaskClick}
                 isFullWidth
+                draggable={false}
               />
             </div>
           </TabsContent>
@@ -163,10 +230,12 @@ const ProjectDetails = () => {
           <TabsContent value="done" className="m-0">
             <div className="grid md:grid-cols-1 gap-4">
               <TaskColumn
+                status="Done"
                 title="Done"
                 tasks={tasks.filter((task) => task.status === "Done")}
                 onTaskClick={handleTaskClick}
                 isFullWidth
+                draggable={false}
               />
             </div>
           </TabsContent>
@@ -187,18 +256,24 @@ const ProjectDetails = () => {
 export default ProjectDetails;
 
 interface TaskColumnProps {
+  status: TaskStatus;
   title: string;
   tasks: Task[];
   onTaskClick: (taskId: string) => void;
   isFullWidth?: boolean;
+  draggable?: boolean;
 }
 
 const TaskColumn = ({
+  status,
   title,
   tasks,
   onTaskClick,
   isFullWidth = false,
+  draggable = true,
 }: TaskColumnProps) => {
+  const { setNodeRef, isOver } = useDroppable({ id: status });
+
   return (
     <div
       className={
@@ -208,9 +283,11 @@ const TaskColumn = ({
       }
     >
       <div
+        ref={draggable ? setNodeRef : undefined}
         className={cn(
-          "space-y-4",
+          "space-y-4 rounded-lg transition-colors",
           !isFullWidth ? "h-full" : "col-span-full mb-4",
+          draggable && isOver && "bg-muted/50 ring-2 ring-primary/30",
         )}
       >
         {!isFullWidth && (
@@ -222,7 +299,7 @@ const TaskColumn = ({
 
         <div
           className={cn(
-            "space-y-3",
+            "space-y-3 min-h-16",
             isFullWidth && "grid grid-cols-2 lg:grid-cols-3 gap-4",
           )}
         >
@@ -231,13 +308,21 @@ const TaskColumn = ({
               No tasks yet
             </div>
           ) : (
-            tasks.map((task) => (
-              <TaskCard
-                key={task._id}
-                task={task}
-                onClick={() => onTaskClick(task._id)}
-              />
-            ))
+            tasks.map((task) =>
+              draggable ? (
+                <DraggableTaskCard
+                  key={task._id}
+                  task={task}
+                  onClick={() => onTaskClick(task._id)}
+                />
+              ) : (
+                <TaskCard
+                  key={task._id}
+                  task={task}
+                  onClick={() => onTaskClick(task._id)}
+                />
+              ),
+            )
           )}
         </div>
       </div>
@@ -245,7 +330,55 @@ const TaskColumn = ({
   );
 };
 
+const DraggableTaskCard = ({
+  task,
+  onClick,
+}: {
+  task: Task;
+  onClick: () => void;
+}) => {
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
+    id: task._id,
+  });
+
+  return (
+    <div
+      ref={setNodeRef}
+      {...listeners}
+      {...attributes}
+      className={cn(
+        "cursor-grab active:cursor-grabbing",
+        isDragging && "opacity-30",
+      )}
+    >
+      <TaskCard task={task} onClick={onClick} />
+    </div>
+  );
+};
+
 const TaskCard = ({ task, onClick }: { task: Task; onClick: () => void }) => {
+  const queryClient = useQueryClient();
+  const { mutate: updateTaskStatus, isPending } = useUpdateTaskStatusMutation();
+
+  const handleStatusChange = (e: React.MouseEvent, status: TaskStatus) => {
+    e.stopPropagation();
+
+    updateTaskStatus(
+      { taskId: task._id, status },
+      {
+        onSuccess: () => {
+          toast.success("Task status updated");
+          queryClient.invalidateQueries({ queryKey: ["project"] });
+        },
+        onError: (error: any) => {
+          const errorMessage =
+            error.response?.data?.error || "Failed to update task status";
+          toast.error(errorMessage);
+        },
+      },
+    );
+  };
+
   return (
     <Card
       onClick={onClick}
@@ -271,9 +404,8 @@ const TaskCard = ({ task, onClick }: { task: Task; onClick: () => void }) => {
                 variant={"ghost"}
                 size={"icon"}
                 className="size-6"
-                onClick={() => {
-                  console.log("mark as to do");
-                }}
+                disabled={isPending}
+                onClick={(e) => handleStatusChange(e, "To Do")}
                 title="Mark as To Do"
               >
                 <AlertCircle className={cn("size-4")} />
@@ -285,9 +417,8 @@ const TaskCard = ({ task, onClick }: { task: Task; onClick: () => void }) => {
                 variant={"ghost"}
                 size={"icon"}
                 className="size-6"
-                onClick={() => {
-                  console.log("mark as in progress");
-                }}
+                disabled={isPending}
+                onClick={(e) => handleStatusChange(e, "In Progress")}
                 title="Mark as In Progress"
               >
                 <Clock className={cn("size-4")} />
@@ -299,9 +430,8 @@ const TaskCard = ({ task, onClick }: { task: Task; onClick: () => void }) => {
                 variant={"ghost"}
                 size={"icon"}
                 className="size-6"
-                onClick={() => {
-                  console.log("mark as done");
-                }}
+                disabled={isPending}
+                onClick={(e) => handleStatusChange(e, "Done")}
                 title="Mark as Done"
               >
                 <CheckCircle className={cn("size-4")} />
@@ -312,54 +442,87 @@ const TaskCard = ({ task, onClick }: { task: Task; onClick: () => void }) => {
         </div>
       </CardHeader>
 
-      <CardContent>
-        <h4 className="ont-medium mb-2">{task.title}</h4>
+      <TaskCardContent task={task} />
+    </Card>
+  );
+};
 
-        {task.description && (
-          <p className="text-sm text-muted-foreground line-clamp-2 mb-2">
-            {task.description}
-          </p>
-        )}
+const TaskCardContent = ({
+  task,
+  dragOverlay = false,
+}: {
+  task: Task;
+  dragOverlay?: boolean;
+}) => {
+  const content = (
+    <CardContent>
+      <h4 className="ont-medium mb-2">{task.title}</h4>
 
-        <div className="flex items-center justify-between text-sm">
-          <div className="flex items-center gap-2">
-            {task.assignees && task.assignees.length > 0 && (
-              <div className="flex -space-x-2">
-                {task.assignees.slice(0, 5).map((member) => (
-                  <Avatar
-                    key={member._id}
-                    className="relative size-8 bg-gray-700 rounded-full border-2 border-background overflow-hidden"
-                    title={member.name}
-                  >
-                    <AvatarImage src={member.profilePicture} />
-                    <AvatarFallback>{member.name.charAt(0)}</AvatarFallback>
-                  </Avatar>
-                ))}
+      {task.description && (
+        <p className="text-sm text-muted-foreground line-clamp-2 mb-2">
+          {task.description}
+        </p>
+      )}
 
-                {task.assignees.length > 5 && (
-                  <span className="text-xs text-muted-foreground">
-                    + {task.assignees.length - 5}
-                  </span>
-                )}
-              </div>
-            )}
-          </div>
+      <div className="flex items-center justify-between text-sm">
+        <div className="flex items-center gap-2">
+          {task.assignees && task.assignees.length > 0 && (
+            <div className="flex -space-x-2">
+              {task.assignees.slice(0, 5).map((member) => (
+                <Avatar
+                  key={member._id}
+                  className="relative size-8 bg-gray-700 rounded-full border-2 border-background overflow-hidden"
+                  title={member.name}
+                >
+                  <AvatarImage src={member.profilePicture} />
+                  <AvatarFallback>{member.name.charAt(0)}</AvatarFallback>
+                </Avatar>
+              ))}
 
-          {task.dueDate && (
-            <div className="text-xs text-muted-foreground flex items-center">
-              <Calendar className="size-3 mr-1" />
-              {format(new Date(task.dueDate), "MMM d, yyyy")}
+              {task.assignees.length > 5 && (
+                <span className="text-xs text-muted-foreground">
+                  + {task.assignees.length - 5}
+                </span>
+              )}
             </div>
           )}
         </div>
-        {/* 5/10 subtasks */}
-        {task.subtasks && task.subtasks.length > 0 && (
-          <div className="mt-2 text-xs text-muted-foreground">
-            {task.subtasks.filter((subtask) => subtask.completed).length} /{" "}
-            {task.subtasks.length} subtasks
+
+        {task.dueDate && (
+          <div className="text-xs text-muted-foreground flex items-center">
+            <Calendar className="size-3 mr-1" />
+            {format(new Date(task.dueDate), "MMM d, yyyy")}
           </div>
         )}
-      </CardContent>
+      </div>
+      {/* 5/10 subtasks */}
+      {task.subtasks && task.subtasks.length > 0 && (
+        <div className="mt-2 text-xs text-muted-foreground">
+          {task.subtasks.filter((subtask) => subtask.completed).length} /{" "}
+          {task.subtasks.length} subtasks
+        </div>
+      )}
+    </CardContent>
+  );
+
+  if (!dragOverlay) return content;
+
+  return (
+    <Card className="shadow-xl rotate-2 cursor-grabbing w-80">
+      <CardHeader>
+        <Badge
+          className={
+            task.priority === "High"
+              ? "bg-red-500 text-white"
+              : task.priority === "Medium"
+                ? "bg-orange-500 text-white"
+                : "bg-slate-500 text-white"
+          }
+        >
+          {task.priority}
+        </Badge>
+      </CardHeader>
+      {content}
     </Card>
   );
 };

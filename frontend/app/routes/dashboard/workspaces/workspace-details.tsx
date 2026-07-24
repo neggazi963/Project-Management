@@ -1,24 +1,31 @@
-import { useParams } from "react-router";
-import { useState } from "react";
+import { Loader } from "@/components/loader";
+import { CreateProjectDialog } from "@/components/project/create-project";
+import { InviteMemberDialog } from "@/components/workspace/invite-member";
+import { ProjectList } from "@/components/workspace/project-list";
+import { WorkspaceHeader } from "@/components/workspace/workspace-header";
 import { useGetWorkspaceQuery } from "@/hooks/use-workspace";
 import type { Project, Workspace } from "@/types";
-import { Loader } from "@/components/loader";
-import { WorkspaceHeader } from "@/components/workspace/workspace-header";
-import { ProjectList } from "@/components/workspace/project-list";
-import { CreateProjectDialog } from "@/components/project/create-project";
+import { useState } from "react";
+import { useParams } from "react-router";
+
 const WorkspaceDetails = () => {
   const { workspaceId } = useParams<{ workspaceId: string }>();
   const [isCreateProject, setIsCreateProject] = useState(false);
   const [isInviteMember, setIsInviteMember] = useState(false);
-  if (!workspaceId) return <div>Workspace not found</div>;
 
-  const { data, isPending, isError } = useGetWorkspaceQuery(workspaceId) as {
-    data: { workspace: Workspace; projects: Project[] } | undefined;
-    isPending: boolean;
-    isError: boolean;
+  if (!workspaceId) {
+    return <div>No workspace found</div>;
+  }
+
+  const { data, isLoading } = useGetWorkspaceQuery(workspaceId) as {
+    data: {
+      workspace: Workspace;
+      projects: Project[];
+    };
+    isLoading: boolean;
   };
 
-  if (isPending) {
+  if (isLoading) {
     return (
       <div>
         <Loader />
@@ -26,9 +33,6 @@ const WorkspaceDetails = () => {
     );
   }
 
-  if (isError || !data) {
-    return <div>Échec du chargement du workspace.</div>;
-  }
   return (
     <div className="space-y-8">
       <WorkspaceHeader
@@ -51,11 +55,11 @@ const WorkspaceDetails = () => {
         workspaceMembers={data.workspace.members as any}
       />
 
-      {/* <InviteMemberDialog
+      <InviteMemberDialog
         isOpen={isInviteMember}
         onOpenChange={setIsInviteMember}
         workspaceId={workspaceId}
-      /> */}
+      />
     </div>
   );
 };

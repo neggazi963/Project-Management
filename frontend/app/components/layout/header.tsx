@@ -1,18 +1,18 @@
-import type { Workspace } from "@/types";
 import { useAuth } from "@/provider/auth-context";
+import type { Workspace } from "@/types";
 import { Button } from "../ui/button";
 import { Bell, PlusCircle } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
+  DropdownMenuTrigger,
   DropdownMenuLabel,
   DropdownMenuSeparator,
-  DropdownMenuTrigger,
+  DropdownMenuItem,
   DropdownMenuGroup,
 } from "../ui/dropdown-menu";
-import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
-import { Link, useLoaderData } from "react-router";
+import { Avatar, AvatarImage, AvatarFallback } from "../ui/avatar";
+import { Link, useLoaderData, useLocation, useNavigate } from "react-router";
 import { WorkspaceAvatar } from "../workspace/workspace-avatar";
 
 interface HeaderProps {
@@ -26,9 +26,23 @@ export const Header = ({
   selectedWorkspace,
   onCreateWorkspace,
 }: HeaderProps) => {
+  const navigate = useNavigate();
+
   const { user, logout } = useAuth();
-  const { workspaces } = (useLoaderData() as { workspaces: Workspace[] }) ?? {
-    workspaces: [],
+  const { workspaces } = useLoaderData() as { workspaces: Workspace[] };
+  const isOnWorkspacePage = useLocation().pathname.includes("/workspace");
+
+  const handleOnClick = (workspace: Workspace) => {
+    onWorkspaceSelected(workspace);
+    const location = window.location;
+
+    if (isOnWorkspacePage) {
+      navigate(`/workspaces/${workspace._id}`);
+    } else {
+      const basePath = location.pathname;
+
+      navigate(`${basePath}?workspaceId=${workspace._id}`);
+    }
   };
 
   return (
@@ -47,7 +61,7 @@ export const Header = ({
                       />
                     )}
                     <span className="font-medium">
-                      {selectedWorkspace.name}
+                      {selectedWorkspace?.name}
                     </span>
                   </>
                 ) : (
@@ -59,14 +73,15 @@ export const Header = ({
 
           <DropdownMenuContent>
             <DropdownMenuGroup>
-              <DropdownMenuLabel>Workspaces</DropdownMenuLabel>
+              <DropdownMenuLabel>Workspace</DropdownMenuLabel>
+              <DropdownMenuSeparator />
             </DropdownMenuGroup>
-            <DropdownMenuSeparator />
+
             <DropdownMenuGroup>
               {workspaces.map((ws) => (
                 <DropdownMenuItem
                   key={ws._id}
-                  onClick={() => onWorkspaceSelected(ws)}
+                  onClick={() => handleOnClick(ws)}
                 >
                   {ws.color && (
                     <WorkspaceAvatar color={ws.color} name={ws.name} />
@@ -75,6 +90,7 @@ export const Header = ({
                 </DropdownMenuItem>
               ))}
             </DropdownMenuGroup>
+
             <DropdownMenuGroup>
               <DropdownMenuItem onClick={onCreateWorkspace}>
                 <PlusCircle className="w-4 h-4 mr-2" />
@@ -92,27 +108,27 @@ export const Header = ({
           <DropdownMenu>
             <DropdownMenuTrigger
               render={
-                <button className="rounded-full border p-1 w-8 h-8">
+                <Button className="rounded-full border p-1 w-8 h-8">
                   <Avatar className="w-8 h-8">
-                    <AvatarImage src={user?.profilePicture} />
-                    <AvatarFallback className="bg-black text-white">
+                    <AvatarImage src={user?.profilePicture} alt={user?.name} />
+                    <AvatarFallback className="bg-primary text-primary-foreground">
                       {user?.name?.charAt(0).toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
-                </button>
+                </Button>
               }
             />
 
             <DropdownMenuContent align="end">
               <DropdownMenuGroup>
                 <DropdownMenuLabel>My Account</DropdownMenuLabel>
+                <DropdownMenuSeparator />
               </DropdownMenuGroup>
+              <DropdownMenuItem>
+                <Link to="/user/profile">Profile</Link>
+              </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem
-                render={<Link to="/user/profile">Profile</Link>}
-              />
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={logout}>Log out</DropdownMenuItem>
+              <DropdownMenuItem onClick={logout}>Log Out</DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>

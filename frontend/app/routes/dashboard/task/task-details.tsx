@@ -1,20 +1,32 @@
 import { BackButton } from "@/components/back-button";
 import { Loader } from "@/components/loader";
+import { CommentSection } from "@/components/task/comment-section";
+import { SubTasksDetails } from "@/components/task/sub-task";
+import { TaskActivity } from "@/components/task/task-activity";
 import { TaskAssigneesSelector } from "@/components/task/task-assignees-selector";
 import { TaskDescription } from "@/components/task/task-description";
 import { TaskPrioritySelector } from "@/components/task/task-priority-selector";
 import { TaskStatusSelector } from "@/components/task/task-status-selector";
 import { TaskTitle } from "@/components/task/task-title";
+import { Watchers } from "@/components/task/watchers";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { useTaskByIdQuery } from "@/hooks/use-task";
+
+import {
+  useAchievedTaskMutation,
+  useDeleteTaskMutation,
+  useTaskByIdQuery,
+  useWatchTaskMutation,
+} from "@/hooks/use-task";
 import { useAuth } from "@/provider/auth-context";
 import type { Project, Task } from "@/types";
-import { formatDistanceToNow } from "date-fns";
+import { format, formatDistanceToNow } from "date-fns";
 import { Eye, EyeOff } from "lucide-react";
 import { useNavigate, useParams } from "react-router";
+import { toast } from "sonner";
 
-function TaskDetails() {
+const TaskDetails = () => {
+  const { mutate: deleteTask, isPending: isDeleting } = useDeleteTaskMutation();
   const { user } = useAuth();
   const { taskId, projectId, workspaceId } = useParams<{
     taskId: string;
@@ -22,6 +34,7 @@ function TaskDetails() {
     workspaceId: string;
   }>();
   const navigate = useNavigate();
+
   const { data, isLoading } = useTaskByIdQuery(taskId!) as {
     data: {
       task: Task;
@@ -29,12 +42,18 @@ function TaskDetails() {
     };
     isLoading: boolean;
   };
-  if (isLoading)
+  const { mutate: watchTask, isPending: isWatching } = useWatchTaskMutation();
+  const { mutate: achievedTask, isPending: isAchieved } =
+    useAchievedTaskMutation();
+
+  if (isLoading) {
     return (
       <div>
         <Loader />
       </div>
     );
+  }
+
   if (!data) {
     return (
       <div className="flex items-center justify-center h-screen">
@@ -47,8 +66,71 @@ function TaskDetails() {
   const isUserWatching = task?.watchers?.some(
     (watcher) => watcher._id.toString() === user?._id.toString(),
   );
+
   const goBack = () => navigate(-1);
+
   const members = task?.assignees || [];
+
+  const handleWatchTask = () => {
+    watchTask(
+      { taskId: task._id },
+      {
+        onSuccess: () => {
+          toast.success("Task watched");
+          navigate(`/workspaces/${workspaceId}/projects/${projectId}`);
+        },
+        onError: () => {
+          toast.error("Failed to watch task");
+        },
+      },
+    );
+  };
+
+  const handleAchievedTask = () => {
+    achievedTask(
+      { taskId: task._id },
+      {
+        onSuccess: () => {
+          toast.success("Task achieved");
+        },
+        onError: () => {
+          toast.error("Failed to achieve task");
+        },
+      },
+    );
+  };
+
+  const handleUnachievedTask = () => {
+    achievedTask(
+      { taskId: task._id },
+      {
+        onSuccess: () => {
+          toast.success("Task unachieved");
+        },
+        onError: () => {
+          toast.error("Failed to unachieve task");
+        },
+      },
+    );
+  };
+
+  const handleDeleteTask = () => {
+    deleteTask(
+      { taskId: task._id },
+      {
+        onSuccess: () => {
+          toast.success("Task deleted");
+          navigate(`/workspaces/${workspaceId}/projects/${projectId}`);
+        },
+        onError: (error: any) => {
+          const errorMessage =
+            error.response?.data?.error || "Failed to delete task";
+          toast.error(errorMessage);
+        },
+      },
+    );
+  };
+
   return (
     <div className="container mx-auto p-0 py-4 md:px-4">
       <div className="flex flex-col md:flex-row items-center justify-between mb-6">
@@ -68,8 +150,9 @@ function TaskDetails() {
           <Button
             variant={"outline"}
             size="sm"
-            onClick={() => {}}
+            onClick={handleWatchTask}
             className="w-fit"
+            disabled={isWatching}
           >
             {isUserWatching ? (
               <>
@@ -87,15 +170,16 @@ function TaskDetails() {
           <Button
             variant={"outline"}
             size="sm"
-            onClick={() => {}}
+            onClick={handleAchievedTask}
             className="w-fit"
+            disabled={isAchieved}
           >
             {task.isArchived ? "Unarchive" : "Archive"}
           </Button>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
         <div className="lg:col-span-2">
           <div className="bg-card rounded-lg p-6 shadow-sm mb-6">
             <div className="flex flex-col md:flex-row justify-between items-start mb-4">
@@ -112,31 +196,36 @@ function TaskDetails() {
                 >
                   {task.priority} Priority
                 </Badge>
+
                 <TaskTitle title={task.title} taskId={task._id} />
 
                 <div className="text-sm md:text-base text-muted-foreground">
-                  Created at : {""}
+                  Created at:{" "}
                   {formatDistanceToNow(new Date(task.createdAt), {
                     addSuffix: true,
-                  })}{" "}
+                  })}
                 </div>
               </div>
-              <div className="flex items-center gap-2 md:mt-0">
+
+              <div className="flex items-center gap-2 mt-4 md:mt-0">
                 <TaskStatusSelector status={task.status} taskId={task._id} />
+
                 <Button
                   variant={"destructive"}
-                  onClick={() => {}}
                   size="sm"
+                  onClick={handleDeleteTask}
                   className="hidden md:block"
                 >
                   Delete Task
                 </Button>
               </div>
             </div>
+
             <div className="mb-6">
               <h3 className="text-sm font-medium text-muted-foreground mb-0">
                 Description
               </h3>
+
               <TaskDescription
                 description={task.description || ""}
                 taskId={task._id}
@@ -150,11 +239,24 @@ function TaskDetails() {
             />
 
             <TaskPrioritySelector priority={task.priority} taskId={task._id} />
+
+            <SubTasksDetails subTasks={task.subtasks || []} taskId={task._id} />
+          </div>
+
+          <CommentSection taskId={task._id} members={project.members as any} />
+        </div>
+
+        {/* right side */}
+        <div className="space-y-6 lg:sticky lg:top-20">
+          <Watchers watchers={task.watchers || []} />
+
+          <div className="max-h-105 overflow-y-auto rounded-lg border">
+            <TaskActivity resourceId={task._id} />
           </div>
         </div>
       </div>
     </div>
   );
-}
+};
 
 export default TaskDetails;

@@ -7,11 +7,14 @@ import {
   CardHeader,
   CardTitle,
 } from "../ui/card";
+import { Button } from "../ui/button";
 import { cn } from "@/lib/utils";
 import { getTaskStatusColor } from "@/lib";
 import { Progress } from "../ui/progress";
 import { format } from "date-fns";
-import { CalendarDays } from "lucide-react";
+import { CalendarDays, Trash2 } from "lucide-react";
+import { useDeleteProjectMutation } from "@/hooks/use-project";
+import { toast } from "sonner";
 
 interface ProjectCardProps {
   project: Project;
@@ -24,11 +27,50 @@ export const ProjectCard = ({
   progress,
   workspaceId,
 }: ProjectCardProps) => {
+  const { mutate: deleteProject, isPending: isDeleting } =
+    useDeleteProjectMutation();
+
+  const handleDeleteProject = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    const confirmed = window.confirm(
+      `Delete "${project.title}"? This action cannot be undone.`,
+    );
+    if (!confirmed) return;
+
+    deleteProject(
+      { projectId: project._id },
+      {
+        onSuccess: () => {
+          toast.success("Project deleted");
+        },
+        onError: (error: any) => {
+          const errorMessage =
+            error.response?.data?.error || "Failed to delete project";
+          toast.error(errorMessage);
+        },
+      },
+    );
+  };
+
   return (
     <Link to={`/workspaces/${workspaceId}/projects/${project._id}`}>
-      <Card className="transition-all duration-300 hover:shadow-md hover:translate-y-1">
+      <Card className="relative transition-all duration-300 hover:shadow-md hover:translate-y-1">
+        <Button
+          variant="ghost"
+          size="icon"
+          className="absolute top-3 right-3 size-7 text-muted-foreground hover:text-destructive"
+          disabled={isDeleting}
+          onClick={handleDeleteProject}
+          title="Delete Project"
+        >
+          <Trash2 className="size-4" />
+          <span className="sr-only">Delete Project</span>
+        </Button>
+
         <CardHeader>
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between pr-8">
             <CardTitle>{project.title}</CardTitle>
             <span
               className={cn(

@@ -1,11 +1,11 @@
 import type { Project } from "@/types";
 import { NoDataFound } from "../no-data-found";
 import { ProjectCard } from "../project/project-card";
+import { getProjectProgress } from "@/lib"; 
 
 interface ProjectListProps {
   workspaceId: string;
   projects: Project[];
-
   onCreateProject: () => void;
 }
 
@@ -20,14 +20,15 @@ export const ProjectList = ({
       <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
         {projects.length === 0 ? (
           <NoDataFound
-            title="No Projects found"
-            description="Create a new project to get started."
+            title="No projects found"
+            description="Create a project to get started"
             buttonText="Create Project"
             buttonAction={onCreateProject}
           />
         ) : (
           projects.map((project) => {
-            const projectProgress = 0;
+            const projectProgress = getProjectProgress(project.tasks || []);
+
             return (
               <ProjectCard
                 key={project._id}

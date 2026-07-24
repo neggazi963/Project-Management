@@ -5,6 +5,7 @@ import {
   createProject,
   getProjectDetails,
   getProjectTasks,
+  deleteProject,
 } from "../controllers/project.controller.js";
 import { z } from "zod";
 
@@ -34,6 +35,13 @@ router.get(
   authMiddleware,
   validateRequest({ params: z.object({ projectId: z.string() }) }),
   getProjectTasks,
+);
+
+router.delete(
+  "/:projectId",
+  authMiddleware,
+  validateRequest({ params: z.object({ projectId: z.string() }) }),
+  deleteProject,
 );
 
 export default router;
