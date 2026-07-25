@@ -45,9 +45,13 @@ function SignUp() {
         navigate("/sign-in");
       },
       onError: (error: any) => {
-        const errorMessage = error.response?.data?.error || error.message;
+        const errorMessage =
+          error.response?.data?.message ||
+          error.response?.data?.error ||
+          error.message ||
+          "Something went wrong. Please try again.";
         console.log(error);
-        toast.error(error.message);
+        toast.error(errorMessage);
       },
     });
   };

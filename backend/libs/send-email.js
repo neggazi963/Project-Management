@@ -1,21 +1,24 @@
-import nodemailer from "nodemailer";
-
 export const sendEmail = async (to, subject, html) => {
   try {
-    const transporter = nodemailer.createTransport({
-      service: "gmail",
-      auth: {
-        user: process.env.GMAIL_USER,
-        pass: process.env.GMAIL_APP_PASSWORD,
+    const response = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
       },
+      body: JSON.stringify({
+        from: "TaskHub <onboarding@resend.dev>",
+        to: [to],
+        subject,
+        html,
+      }),
     });
 
-    await transporter.sendMail({
-      from: `"TaskHub" <${process.env.GMAIL_USER}>`,
-      to,
-      subject,
-      html,
-    });
+    if (!response.ok) {
+      const errorBody = await response.text();
+      console.error("Resend API error:", response.status, errorBody);
+      return false;
+    }
 
     return true;
   } catch (error) {
