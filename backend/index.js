@@ -12,9 +12,32 @@ dns.setServers(["8.8.8.8", "8.8.4.4"]);
 
 const app = express();
 
+const allowedOrigins = [process.env.FRONTEND_URL, "http://localhost:5173"];
+
+const isAllowedOrigin = (origin) => {
+  if (!origin) return true; // requests with no origin (curl, mobile apps, server-to-server)
+  if (allowedOrigins.includes(origin)) return true;
+
+  // allow any Vercel preview deployment for this project,
+  // e.g. https://project-management-svmh-<hash>.vercel.app
+  if (
+    /^https:\/\/project-management-svmh(-[a-z0-9]+)?\.vercel\.app$/.test(origin)
+  ) {
+    return true;
+  }
+
+  return false;
+};
+
 app.use(
   cors({
-    origin: process.env.FRONTEND_URL,
+    origin: (origin, callback) => {
+      if (isAllowedOrigin(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
     methods: ["GET", "POST", "PUT", "DELETE"],
     allowedHeaders: ["Content-Type", "Authorization"],
   }),
