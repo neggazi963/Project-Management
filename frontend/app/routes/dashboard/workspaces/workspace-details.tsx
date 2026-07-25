@@ -1,3 +1,4 @@
+import { BackButton } from "@/components/back-button";
 import { Loader } from "@/components/loader";
 import { CreateProjectDialog } from "@/components/project/create-project";
 import { InviteMemberDialog } from "@/components/workspace/invite-member";
@@ -35,6 +36,7 @@ const WorkspaceDetails = () => {
 
   return (
     <div className="space-y-8">
+      <BackButton />
       <WorkspaceHeader
         workspace={data.workspace}
         members={data?.workspace?.members as any}

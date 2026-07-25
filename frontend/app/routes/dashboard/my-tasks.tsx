@@ -11,6 +11,7 @@ import {
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
@@ -139,26 +140,31 @@ const MyTasks = () => {
             />
 
             <DropdownMenuContent>
-              <DropdownMenuLabel>Filter Tasks</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => setFilter("all")}>
-                All Tasks
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setFilter("todo")}>
-                To Do
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setFilter("inprogress")}>
-                In Progress
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setFilter("done")}>
-                Done
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setFilter("achieved")}>
-                Achieved
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setFilter("high")}>
-                High
-              </DropdownMenuItem>
+              <DropdownMenuGroup>
+                <DropdownMenuLabel>Filter Tasks</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+              </DropdownMenuGroup>
+
+              <DropdownMenuGroup>
+                <DropdownMenuItem onClick={() => setFilter("all")}>
+                  All Tasks
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setFilter("todo")}>
+                  To Do
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setFilter("inprogress")}>
+                  In Progress
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setFilter("done")}>
+                  Done
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setFilter("achieved")}>
+                  Achieved
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setFilter("high")}>
+                  High
+                </DropdownMenuItem>
+              </DropdownMenuGroup>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>

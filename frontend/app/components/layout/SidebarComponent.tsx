@@ -8,7 +8,6 @@ import {
   LayoutDashboard,
   ListChecks,
   LogOut,
-  Settings,
   Users,
   Wrench,
 } from "lucide-react";
@@ -46,16 +45,6 @@ export const SidebarComponent = ({
       title: "Members",
       href: "/members",
       icon: Users,
-    },
-    {
-      title: "Achieved",
-      href: "/achieved",
-      icon: CheckCircle2,
-    },
-    {
-      title: "Settings",
-      href: "/settings",
-      icon: Settings,
     },
   ];
 

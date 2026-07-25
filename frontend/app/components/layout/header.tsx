@@ -14,6 +14,7 @@ import {
 import { Avatar, AvatarImage, AvatarFallback } from "../ui/avatar";
 import { Link, useLoaderData, useLocation, useNavigate } from "react-router";
 import { WorkspaceAvatar } from "../workspace/workspace-avatar";
+import { ModeToggle } from "../mode-toggle";
 
 interface HeaderProps {
   onWorkspaceSelected: (workspace: Workspace) => void;
@@ -118,6 +119,7 @@ export const Header = ({
                 </Button>
               }
             />
+            <ModeToggle />
 
             <DropdownMenuContent align="end">
               <DropdownMenuGroup>
