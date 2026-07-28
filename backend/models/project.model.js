@@ -38,6 +38,10 @@ const projectSchema = new Schema(
     tags: [{ type: String }],
     createdBy: { type: Schema.Types.ObjectId, ref: "User", required: true },
     isArchived: { type: Boolean, default: false },
+    roadmap: {
+      type: Schema.Types.Mixed,
+      default: null,
+    },
   },
   { timestamps: true },
 );

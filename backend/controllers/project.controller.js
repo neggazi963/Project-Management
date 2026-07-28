@@ -168,4 +168,77 @@ const deleteProject = async (req, res) => {
   }
 };
 
-export { createProject, getProjectDetails, getProjectTasks, deleteProject };
+const getProjectRoadmap = async (req, res) => {
+  try {
+    const { projectId } = req.params;
+
+    const project = await Project.findById(projectId).select("roadmap members");
+
+    if (!project) {
+      return res.status(404).json({
+        message: "Project not found",
+      });
+    }
+
+    const isMember = project.members.some(
+      (member) => member.user.toString() === req.user._id.toString(),
+    );
+
+    if (!isMember) {
+      return res.status(403).json({
+        message: "You are not a member of this project",
+      });
+    }
+
+    return res.status(200).json({ roadmap: project.roadmap || null });
+  } catch (error) {
+    console.log(error);
+    return res.status(500).json({
+      message: "Internal server error",
+    });
+  }
+};
+
+const updateProjectRoadmap = async (req, res) => {
+  try {
+    const { projectId } = req.params;
+    const { roadmap } = req.body;
+
+    const project = await Project.findById(projectId);
+
+    if (!project) {
+      return res.status(404).json({
+        message: "Project not found",
+      });
+    }
+
+    const isMember = project.members.some(
+      (member) => member.user.toString() === req.user._id.toString(),
+    );
+
+    if (!isMember) {
+      return res.status(403).json({
+        message: "You are not a member of this project",
+      });
+    }
+
+    project.roadmap = roadmap;
+    await project.save();
+
+    return res.status(200).json({ roadmap: project.roadmap });
+  } catch (error) {
+    console.log(error);
+    return res.status(500).json({
+      message: "Internal server error",
+    });
+  }
+};
+
+export {
+  createProject,
+  getProjectDetails,
+  getProjectTasks,
+  deleteProject,
+  getProjectRoadmap,
+  updateProjectRoadmap,
+};

@@ -6,6 +6,8 @@ import {
   getProjectDetails,
   getProjectTasks,
   deleteProject,
+  getProjectRoadmap,
+  updateProjectRoadmap,
 } from "../controllers/project.controller.js";
 import { z } from "zod";
 
@@ -42,6 +44,23 @@ router.delete(
   authMiddleware,
   validateRequest({ params: z.object({ projectId: z.string() }) }),
   deleteProject,
+);
+
+router.get(
+  "/:projectId/roadmap",
+  authMiddleware,
+  validateRequest({ params: z.object({ projectId: z.string() }) }),
+  getProjectRoadmap,
+);
+
+router.put(
+  "/:projectId/roadmap",
+  authMiddleware,
+  validateRequest({
+    params: z.object({ projectId: z.string() }),
+    body: z.object({ roadmap: z.any() }),
+  }),
+  updateProjectRoadmap,
 );
 
 export default router;
