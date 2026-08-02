@@ -1,6 +1,8 @@
 import { BackButton } from "@/components/back-button";
 import { Loader } from "@/components/loader";
 import { CreateTaskDialog } from "@/components/task/create-task-dialog";
+import { NotesTab } from "@/components/project/notes-tab";
+import { RoadmapTab } from "@/components/project/roadmap-tab";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -156,6 +158,8 @@ const ProjectDetails = () => {
               <TabsTrigger value="done" onClick={() => setTaskFilter("Done")}>
                 Done
               </TabsTrigger>
+              <TabsTrigger value="notes">Notes</TabsTrigger>
+              <TabsTrigger value="roadmap">Roadmap</TabsTrigger>
             </TabsList>
 
             <div className="flex items-center text-sm">
@@ -238,6 +242,14 @@ const ProjectDetails = () => {
                 draggable={false}
               />
             </div>
+          </TabsContent>
+
+          <TabsContent value="notes" className="m-0">
+            <NotesTab projectId={projectId!} />
+          </TabsContent>
+
+          <TabsContent value="roadmap" className="m-0">
+            <RoadmapTab projectId={projectId!} />
           </TabsContent>
         </Tabs>
       </div>

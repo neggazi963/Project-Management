@@ -15,6 +15,7 @@ import { Avatar, AvatarImage, AvatarFallback } from "../ui/avatar";
 import { Link, useLoaderData, useLocation, useNavigate } from "react-router";
 import { WorkspaceAvatar } from "../workspace/workspace-avatar";
 import { ModeToggle } from "../mode-toggle";
+import { GlobalSearch } from "../global-search";
 
 interface HeaderProps {
   onWorkspaceSelected: (workspace: Workspace) => void;
@@ -49,57 +50,61 @@ export const Header = ({
   return (
     <div className="bg-background sticky top-0 z-40 border-b">
       <div className="flex h-14 items-center justify-between px-4 sm:px-6 lg:px-8 py-4">
-        <DropdownMenu>
-          <DropdownMenuTrigger
-            render={
-              <Button variant={"outline"}>
-                {selectedWorkspace ? (
-                  <>
-                    {selectedWorkspace.color && (
-                      <WorkspaceAvatar
-                        color={selectedWorkspace.color}
-                        name={selectedWorkspace.name}
-                      />
-                    )}
-                    <span className="font-medium">
-                      {selectedWorkspace?.name}
-                    </span>
-                  </>
-                ) : (
-                  <span className="font-medium">Select Workspace</span>
-                )}
-              </Button>
-            }
-          />
-
-          <DropdownMenuContent>
-            <DropdownMenuGroup>
-              <DropdownMenuLabel>Workspace</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-            </DropdownMenuGroup>
-
-            <DropdownMenuGroup>
-              {workspaces.map((ws) => (
-                <DropdownMenuItem
-                  key={ws._id}
-                  onClick={() => handleOnClick(ws)}
-                >
-                  {ws.color && (
-                    <WorkspaceAvatar color={ws.color} name={ws.name} />
+        <div className="flex items-center gap-3">
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              render={
+                <Button variant={"outline"}>
+                  {selectedWorkspace ? (
+                    <>
+                      {selectedWorkspace.color && (
+                        <WorkspaceAvatar
+                          color={selectedWorkspace.color}
+                          name={selectedWorkspace.name}
+                        />
+                      )}
+                      <span className="font-medium">
+                        {selectedWorkspace?.name}
+                      </span>
+                    </>
+                  ) : (
+                    <span className="font-medium">Select Workspace</span>
                   )}
-                  <span className="ml-2">{ws.name}</span>
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuGroup>
+                </Button>
+              }
+            />
 
-            <DropdownMenuGroup>
-              <DropdownMenuItem onClick={onCreateWorkspace}>
-                <PlusCircle className="w-4 h-4 mr-2" />
-                Create Workspace
-              </DropdownMenuItem>
-            </DropdownMenuGroup>
-          </DropdownMenuContent>
-        </DropdownMenu>
+            <DropdownMenuContent>
+              <DropdownMenuGroup>
+                <DropdownMenuLabel>Workspace</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+              </DropdownMenuGroup>
+
+              <DropdownMenuGroup>
+                {workspaces.map((ws) => (
+                  <DropdownMenuItem
+                    key={ws._id}
+                    onClick={() => handleOnClick(ws)}
+                  >
+                    {ws.color && (
+                      <WorkspaceAvatar color={ws.color} name={ws.name} />
+                    )}
+                    <span className="ml-2">{ws.name}</span>
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuGroup>
+
+              <DropdownMenuGroup>
+                <DropdownMenuItem onClick={onCreateWorkspace}>
+                  <PlusCircle className="w-4 h-4 mr-2" />
+                  Create Workspace
+                </DropdownMenuItem>
+              </DropdownMenuGroup>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          <GlobalSearch />
+        </div>
 
         <div className="flex items-center gap-2">
           <Button variant="ghost" size="icon">

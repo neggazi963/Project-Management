@@ -25,6 +25,7 @@ import { format } from "date-fns";
 import { ArrowUpRight, CheckCircle, Clock, FilterIcon } from "lucide-react";
 import React, { useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router";
+import { TaskCalendar } from "@/components/task/task-calendar";
 
 const MyTasks = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -181,6 +182,7 @@ const MyTasks = () => {
         <TabsList>
           <TabsTrigger value="list">List View</TabsTrigger>
           <TabsTrigger value="board">Board View</TabsTrigger>
+          <TabsTrigger value="calendar">Calendar View</TabsTrigger>
         </TabsList>
 
         {/* LIST VIEW */}
@@ -430,6 +432,9 @@ const MyTasks = () => {
               </CardContent>
             </Card>
           </div>
+        </TabsContent>
+        <TabsContent value="calendar">
+          <TaskCalendar tasks={sortedTasks} />
         </TabsContent>
       </Tabs>
     </div>
