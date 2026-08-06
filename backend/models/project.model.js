@@ -42,6 +42,8 @@ const projectSchema = new Schema(
       type: Schema.Types.Mixed,
       default: null,
     },
+    coverImage: { type: String, default: null },
+    coverPosition: { type: Number, default: 50 },
   },
   { timestamps: true },
 );

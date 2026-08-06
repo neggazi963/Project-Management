@@ -13,14 +13,9 @@ import {
 import { toast } from "sonner";
 import { PlusCircle, Trash2, Pencil, ArrowLeft } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
+import type { Note } from "@/types";
 
-interface Note {
-  _id: string;
-  title: string;
-  content: string;
-  createdBy?: { name: string; profilePicture?: string };
-  updatedAt: string;
-}
+
 
 const YOUTUBE_REGEX =
   /^(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]{11})\S*$/;

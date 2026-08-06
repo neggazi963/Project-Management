@@ -20,8 +20,17 @@ import {
   updateTaskTitle,
   watchTask,
   deleteTask,
+  addAttachment,
+  deleteAttachment,
+  startTimer,
+  stopTimer,
+  addManualTimeEntry,
+  deleteTimeEntry,
+  updateTaskSchedule,
+  updateTaskDependencies,
 } from "../controllers/task.controller.js";
 import authMiddleware from "../middleware/auth.middleware.js";
+import upload from "../middleware/upload.middleware.js";
 
 const router = express.Router();
 
@@ -73,6 +82,65 @@ router.post(
     params: z.object({ taskId: z.string() }),
   }),
   achievedTask,
+);
+
+router.post(
+  "/:taskId/attachments",
+  authMiddleware,
+  validateRequest({
+    params: z.object({ taskId: z.string() }),
+  }),
+  upload.single("file"),
+  addAttachment,
+);
+
+router.delete(
+  "/:taskId/attachments/:attachmentId",
+  authMiddleware,
+  validateRequest({
+    params: z.object({ taskId: z.string(), attachmentId: z.string() }),
+  }),
+  deleteAttachment,
+);
+
+router.post(
+  "/:taskId/timer/start",
+  authMiddleware,
+  validateRequest({
+    params: z.object({ taskId: z.string() }),
+  }),
+  startTimer,
+);
+
+router.post(
+  "/:taskId/timer/stop",
+  authMiddleware,
+  validateRequest({
+    params: z.object({ taskId: z.string() }),
+  }),
+  stopTimer,
+);
+
+router.post(
+  "/:taskId/time-entries",
+  authMiddleware,
+  validateRequest({
+    params: z.object({ taskId: z.string() }),
+    body: z.object({
+      startTime: z.string(),
+      endTime: z.string(),
+    }),
+  }),
+  addManualTimeEntry,
+);
+
+router.delete(
+  "/:taskId/time-entries/:entryId",
+  authMiddleware,
+  validateRequest({
+    params: z.object({ taskId: z.string(), entryId: z.string() }),
+  }),
+  deleteTimeEntry,
 );
 
 router.put(
@@ -174,5 +242,26 @@ router.delete(
   }),
   deleteTask,
 );
+router.put(
+  "/:taskId/schedule",
+  authMiddleware,
+  validateRequest({
+    params: z.object({ taskId: z.string() }),
+    body: z.object({
+      startDate: z.string().optional(),
+      dueDate: z.string().optional(),
+    }),
+  }),
+  updateTaskSchedule,
+);
 
+router.put(
+  "/:taskId/dependencies",
+  authMiddleware,
+  validateRequest({
+    params: z.object({ taskId: z.string() }),
+    body: z.object({ dependencies: z.array(z.string()) }),
+  }),
+  updateTaskDependencies,
+);
 export default router;

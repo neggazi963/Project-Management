@@ -140,4 +140,24 @@ const deleteNote = async (req, res) => {
   }
 };
 
-export { createNote, getProjectNotes, updateNote, deleteNote };
+const getMyNotes = async (req, res) => {
+  try {
+    const projects = await Project.find({
+      members: { $elemMatch: { user: req.user._id } },
+    }).select("_id");
+
+    const projectIds = projects.map((p) => p._id);
+
+    const notes = await Note.find({ project: { $in: projectIds } })
+      .populate("createdBy", "name profilePicture")
+      .populate("project", "title workspace")
+      .sort({ updatedAt: -1 });
+
+    res.status(200).json(notes);
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+export { createNote, getProjectNotes, updateNote, deleteNote, getMyNotes };

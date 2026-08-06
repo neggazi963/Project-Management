@@ -1,5 +1,11 @@
 import type { CreateProjectFormData } from "@/components/project/create-project";
-import { fetchData, postData, deleteData, updateData } from "@/lib/fetch-util";
+import {
+  fetchData,
+  postData,
+  deleteData,
+  updateData,
+  postFormData,
+} from "@/lib/fetch-util";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 export const UseCreateProject = () => {
@@ -60,6 +66,77 @@ export const useUpdateProjectRoadmapMutation = () => {
     onSuccess: (_data: any, variables) => {
       queryClient.invalidateQueries({
         queryKey: ["project", variables.projectId, "roadmap"],
+      });
+    },
+  });
+};
+
+export const useUploadProjectCoverMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (data: { projectId: string; file: File }) => {
+      const formData = new FormData();
+      formData.append("file", data.file);
+      return postFormData(`/projects/${data.projectId}/cover/upload`, formData);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["project"] });
+      queryClient.invalidateQueries({ queryKey: ["workspace"] });
+    },
+  });
+};
+
+export const useSetProjectCoverUrlMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (data: { projectId: string; coverImage: string }) =>
+      updateData(`/projects/${data.projectId}/cover`, {
+        coverImage: data.coverImage,
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["project"] });
+      queryClient.invalidateQueries({ queryKey: ["workspace"] });
+    },
+  });
+};
+
+export const useRemoveProjectCoverMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (data: { projectId: string }) =>
+      deleteData(`/projects/${data.projectId}/cover`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["project"] });
+      queryClient.invalidateQueries({ queryKey: ["workspace"] });
+    },
+  });
+};
+
+export const useUpdateProjectCoverPositionMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      projectId,
+      position,
+    }: {
+      projectId: string;
+      position: number;
+    }) =>
+      updateData(`/projects/${projectId}/cover/position`, {
+        position,
+      }),
+
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ["project", variables.projectId],
+      });
+
+      queryClient.invalidateQueries({
+        queryKey: ["workspace"],
       });
     },
   });

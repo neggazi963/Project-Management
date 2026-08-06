@@ -6,6 +6,7 @@ import WorkspaceInvite from "../models/workspace-invite.js";
 import jwt from "jsonwebtoken";
 import { sendEmail } from "../libs/send-email.js";
 import { recordActivity } from "../libs/index.js";
+import { notify } from "../libs/notify.js";
 
 const createWorkspace = async (req, res) => {
   try {
@@ -194,7 +195,7 @@ const getWorkspaceStats = async (req, res) => {
     // populate
 
     for (const project of projects) {
-      for (const task in project.tasks) {
+      for (const task of project.tasks) {
         const taskDate = new Date(task.updatedAt);
 
         const dayInDate = last7Days.findIndex(
@@ -394,6 +395,14 @@ const inviteUserToWorkspace = async (req, res) => {
       <p>You have been invited to join ${workspace.name} workspace</p>
       <p>Click here to join: <a href="${invitationLink}">${invitationLink}</a></p>
     `;
+
+    await notify({
+      recipient: existingUser._id,
+      sender: req.user._id,
+      type: "invitation_received",
+      message: `${req.user.name} invited you to join workspace: "${workspace.name}"`,
+      link: `/workspace-invite/${workspace._id}?tk=${inviteToken}`,
+    });
 
     await sendEmail(
       email,

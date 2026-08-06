@@ -20,6 +20,8 @@ import { useState } from "react";
 import { useNavigate, useParams } from "react-router";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
+import { GanttTab } from "@/components/project/gantt-tab";
+import { ProjectCover } from "@/components/project/project-cover";
 import {
   DndContext,
   DragOverlay,
@@ -113,6 +115,11 @@ const ProjectDetails = () => {
 
   return (
     <div className="space-y-8">
+      <ProjectCover
+        projectId={project._id}
+        coverImage={project.coverImage}
+        coverPosition={project.coverPosition}
+      />
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <BackButton />
@@ -128,7 +135,10 @@ const ProjectDetails = () => {
           <div className="flex items-center gap-2 min-w-32">
             <div className="text-sm text-muted-foreground">Progress:</div>
             <div className="flex-1">
-              <Progress value={projectProgress} className="h-2" />
+              <Progress
+                value={projectProgress}
+                className="h-1.5 rounded-full"
+              />
             </div>
             <span className="text-sm text-muted-foreground">
               {projectProgress}%
@@ -160,6 +170,7 @@ const ProjectDetails = () => {
               </TabsTrigger>
               <TabsTrigger value="notes">Notes</TabsTrigger>
               <TabsTrigger value="roadmap">Roadmap</TabsTrigger>
+              <TabsTrigger value="gantt">Gantt</TabsTrigger>
             </TabsList>
 
             <div className="flex items-center text-sm">
@@ -250,6 +261,9 @@ const ProjectDetails = () => {
 
           <TabsContent value="roadmap" className="m-0">
             <RoadmapTab projectId={projectId!} />
+          </TabsContent>
+          <TabsContent value="gantt" className="m-0">
+            <GanttTab tasks={tasks} />
           </TabsContent>
         </Tabs>
       </div>

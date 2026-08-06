@@ -8,6 +8,7 @@ import {
   LayoutDashboard,
   ListChecks,
   LogOut,
+  NotebookPen,
   Users,
   Wrench,
 } from "lucide-react";
@@ -41,11 +42,17 @@ export const SidebarComponent = ({
       href: "/my-tasks",
       icon: ListChecks,
     },
+     {
+      title: "My Notes",
+      href: "/my-notes",
+      icon:  NotebookPen,
+    },
     {
       title: "Members",
       href: "/members",
       icon: Users,
     },
+   
   ];
 
   return (

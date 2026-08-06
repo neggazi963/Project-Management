@@ -61,3 +61,10 @@ export const useDeleteNoteMutation = () => {
     },
   });
 };
+
+export const useGetMyNotesQuery = () => {
+  return useQuery({
+    queryKey: ["my-notes", "user"],
+    queryFn: () => fetchData("/notes/my-notes"),
+  });
+};

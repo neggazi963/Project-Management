@@ -1,5 +1,11 @@
 import type { CreateTaskFormData } from "@/components/task/create-task-dialog";
-import { deleteData, fetchData, postData, updateData } from "@/lib/fetch-util";
+import {
+  deleteData,
+  fetchData,
+  postData,
+  updateData,
+  postFormData,
+} from "@/lib/fetch-util";
 import type { TaskPriority, TaskStatus } from "@/types";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
@@ -225,6 +231,130 @@ export const useDeleteTaskMutation = () => {
     mutationFn: (data: { taskId: string }) =>
       deleteData(`/tasks/${data.taskId}`),
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["project"] });
+    },
+  });
+};
+
+export const useAddAttachmentMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (data: { taskId: string; file: File }) => {
+      const formData = new FormData();
+      formData.append("file", data.file);
+      return postFormData(`/tasks/${data.taskId}/attachments`, formData);
+    },
+    onSuccess: (data: any) => {
+      queryClient.invalidateQueries({ queryKey: ["task", data._id] });
+      queryClient.invalidateQueries({
+        queryKey: ["task-activity", data._id],
+      });
+    },
+  });
+};
+
+export const useDeleteAttachmentMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (data: { taskId: string; attachmentId: string }) =>
+      deleteData(`/tasks/${data.taskId}/attachments/${data.attachmentId}`),
+    onSuccess: (data: any) => {
+      queryClient.invalidateQueries({ queryKey: ["task", data._id] });
+      queryClient.invalidateQueries({
+        queryKey: ["task-activity", data._id],
+      });
+    },
+  });
+};
+export const useStartTimerMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (data: { taskId: string }) =>
+      postData(`/tasks/${data.taskId}/timer/start`, {}),
+    onSuccess: (data: any) => {
+      queryClient.invalidateQueries({ queryKey: ["task", data._id] });
+    },
+  });
+};
+
+export const useStopTimerMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (data: { taskId: string }) =>
+      postData(`/tasks/${data.taskId}/timer/stop`, {}),
+    onSuccess: (data: any) => {
+      queryClient.invalidateQueries({ queryKey: ["task", data._id] });
+      queryClient.invalidateQueries({
+        queryKey: ["task-activity", data._id],
+      });
+    },
+  });
+};
+
+export const useAddManualTimeEntryMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (data: {
+      taskId: string;
+      startTime: string;
+      endTime: string;
+    }) =>
+      postData(`/tasks/${data.taskId}/time-entries`, {
+        startTime: data.startTime,
+        endTime: data.endTime,
+      }),
+    onSuccess: (data: any) => {
+      queryClient.invalidateQueries({ queryKey: ["task", data._id] });
+    },
+  });
+};
+
+export const useDeleteTimeEntryMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (data: { taskId: string; entryId: string }) =>
+      deleteData(`/tasks/${data.taskId}/time-entries/${data.entryId}`),
+    onSuccess: (data: any) => {
+      queryClient.invalidateQueries({ queryKey: ["task", data._id] });
+    },
+  });
+};
+export const useUpdateTaskScheduleMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (data: {
+      taskId: string;
+      startDate?: string;
+      dueDate?: string;
+    }) =>
+      updateData(`/tasks/${data.taskId}/schedule`, {
+        startDate: data.startDate,
+        dueDate: data.dueDate,
+      }),
+    onSuccess: (data: any) => {
+      queryClient.invalidateQueries({ queryKey: ["task", data._id] });
+      queryClient.invalidateQueries({ queryKey: ["project"] });
+    },
+  });
+};
+
+export const useUpdateTaskDependenciesMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (data: { taskId: string; dependencies: string[] }) =>
+      updateData(`/tasks/${data.taskId}/dependencies`, {
+        dependencies: data.dependencies,
+      }),
+    onSuccess: (data: any) => {
+      queryClient.invalidateQueries({ queryKey: ["task", data._id] });
       queryClient.invalidateQueries({ queryKey: ["project"] });
     },
   });

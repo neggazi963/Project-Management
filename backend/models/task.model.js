@@ -22,9 +22,10 @@ const taskSchema = new Schema(
     assignees: [{ type: Schema.Types.ObjectId, ref: "User" }],
     watchers: [{ type: Schema.Types.ObjectId, ref: "User" }],
     dueDate: { type: Date },
+    startDate: { type: Date },
+    dependencies: [{ type: Schema.Types.ObjectId, ref: "Task" }],
     completedAt: { type: Date },
     estimatedHours: { type: Number, min: 0 },
-    actualHours: { type: Number, min: 0 },
     tags: [{ type: String }],
     subtasks: [
       {
@@ -55,6 +56,15 @@ const taskSchema = new Schema(
     ],
     createdBy: { type: Schema.Types.ObjectId, ref: "User", required: true },
     isArchived: { type: Boolean, default: false },
+    actualHours: { type: Number, min: 0 },
+    timeEntries: [
+      {
+        user: { type: Schema.Types.ObjectId, ref: "User", required: true },
+        startTime: { type: Date, required: true },
+        endTime: { type: Date },
+        duration: { type: Number }, // in seconds
+      },
+    ],
   },
   { timestamps: true },
 );

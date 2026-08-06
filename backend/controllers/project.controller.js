@@ -1,6 +1,7 @@
 import Workspace from "../models/workspace.model.js";
 import Project from "../models/project.model.js";
 import Task from "../models/task.model.js";
+import cloudinary from "../libs/cloudinary.js";
 
 const createProject = async (req, res) => {
   try {
@@ -233,6 +234,146 @@ const updateProjectRoadmap = async (req, res) => {
     });
   }
 };
+const uploadProjectCover = async (req, res) => {
+  try {
+    const { projectId } = req.params;
+
+    if (!req.file) {
+      return res.status(400).json({ message: "No file uploaded" });
+    }
+
+    const project = await Project.findById(projectId);
+
+    if (!project) {
+      return res.status(404).json({ message: "Project not found" });
+    }
+
+    const isMember = project.members.some(
+      (member) => member.user.toString() === req.user._id.toString(),
+    );
+
+    if (!isMember) {
+      return res.status(403).json({
+        message: "You are not a member of this project",
+      });
+    }
+
+    const uploadResult = await new Promise((resolve, reject) => {
+      const stream = cloudinary.uploader.upload_stream(
+        {
+          folder: "taskhub/project-covers",
+          resource_type: "image",
+        },
+        (error, result) => {
+          if (error) reject(error);
+          else resolve(result);
+        },
+      );
+      stream.end(req.file.buffer);
+    });
+
+    project.coverImage = uploadResult.secure_url;
+    await project.save();
+
+    res.status(200).json(project);
+  } catch (error) {
+    console.log(error);
+    return res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+const setProjectCoverUrl = async (req, res) => {
+  try {
+    const { projectId } = req.params;
+    const { coverImage } = req.body;
+
+    const project = await Project.findById(projectId);
+
+    if (!project) {
+      return res.status(404).json({ message: "Project not found" });
+    }
+
+    const isMember = project.members.some(
+      (member) => member.user.toString() === req.user._id.toString(),
+    );
+
+    if (!isMember) {
+      return res.status(403).json({
+        message: "You are not a member of this project",
+      });
+    }
+
+    project.coverImage = coverImage;
+    await project.save();
+
+    res.status(200).json(project);
+  } catch (error) {
+    console.log(error);
+    return res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+const removeProjectCover = async (req, res) => {
+  try {
+    const { projectId } = req.params;
+
+    const project = await Project.findById(projectId);
+
+    if (!project) {
+      return res.status(404).json({ message: "Project not found" });
+    }
+
+    const isMember = project.members.some(
+      (member) => member.user.toString() === req.user._id.toString(),
+    );
+
+    if (!isMember) {
+      return res.status(403).json({
+        message: "You are not a member of this project",
+      });
+    }
+
+    project.coverImage = null;
+    await project.save();
+
+    res.status(200).json(project);
+  } catch (error) {
+    console.log(error);
+    return res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+const updateProjectCoverPosition = async (req, res) => {
+  try {
+    const { projectId } = req.params;
+    const { position } = req.body;
+
+    const project = await Project.findById(projectId);
+
+    if (!project) {
+      return res.status(404).json({ message: "Project not found" });
+    }
+
+    const isMember = project.members.some(
+      (member) => member.user.toString() === req.user._id.toString(),
+    );
+
+    if (!isMember) {
+      return res.status(403).json({
+        message: "You are not a member of this project",
+      });
+    }
+
+    project.coverPosition = Math.min(100, Math.max(0, position));
+    await project.save();
+
+    res.status(200).json(project);
+  } catch (error) {
+    console.log(error);
+    return res.status(500).json({ message: "Internal server error" });
+  }
+};
+
 
 export {
   createProject,
@@ -241,4 +382,8 @@ export {
   deleteProject,
   getProjectRoadmap,
   updateProjectRoadmap,
+  uploadProjectCover,
+  setProjectCoverUrl,
+  removeProjectCover,
+  updateProjectCoverPosition,
 };

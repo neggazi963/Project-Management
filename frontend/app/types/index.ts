@@ -31,6 +31,7 @@ export enum ProjectStatus {
 }
 
 export interface Project {
+  coverPosition: number | undefined;
   _id: string;
   title: string;
   description?: string;
@@ -47,6 +48,7 @@ export interface Project {
   createdAt: Date;
   updatedAt: Date;
   isArchived: boolean;
+  coverImage?: string | null;
 }
 export type TaskStatus = "To Do" | "In Progress" | "Done";
 export type TaskPriority = "High" | "Medium" | "Low";
@@ -80,6 +82,9 @@ export interface Task {
   subtasks?: Subtask[];
   watchers?: User[];
   attachments?: Attachment[];
+  timeEntries?: TimeEntry[];
+  startDate?: Date;
+  dependencies?: (TaskDependency | string)[];
 }
 
 export interface Attachment {
@@ -180,4 +185,36 @@ export interface WorkspaceProductivityData {
   name: string;
   completed: number;
   total: number;
+}
+export interface TimeEntry {
+  _id: string;
+  user: User | string;
+  startTime: Date;
+  endTime?: Date;
+  duration?: number;
+}
+
+export interface TaskDependency {
+  _id: string;
+  title: string;
+  status: TaskStatus;
+}
+
+export interface Note {
+  _id: string;
+  title: string;
+  content: string; 
+  project?: {
+    _id: string;
+    title: string;
+    workspace: string; // ObjectId
+  };
+  
+  createdBy?: {
+    _id: string;
+    name: string;
+    profilePicture?: string;
+  };
+  createdAt: string;
+  updatedAt: string;
 }

@@ -8,8 +8,14 @@ import {
   deleteProject,
   getProjectRoadmap,
   updateProjectRoadmap,
+  uploadProjectCover,
+  setProjectCoverUrl,
+  removeProjectCover,
+  updateProjectCoverPosition,
+
 } from "../controllers/project.controller.js";
 import { z } from "zod";
+import upload from "../middleware/upload.middleware.js";
 
 import express from "express";
 
@@ -62,5 +68,42 @@ router.put(
   }),
   updateProjectRoadmap,
 );
+
+router.post(
+  "/:projectId/cover/upload",
+  authMiddleware,
+  validateRequest({ params: z.object({ projectId: z.string() }) }),
+  upload.single("file"),
+  uploadProjectCover,
+);
+
+router.put(
+  "/:projectId/cover",
+  authMiddleware,
+  validateRequest({
+    params: z.object({ projectId: z.string() }),
+    body: z.object({ coverImage: z.string() }),
+  }),
+  setProjectCoverUrl,
+);
+
+router.delete(
+  "/:projectId/cover",
+  authMiddleware,
+  validateRequest({ params: z.object({ projectId: z.string() }) }),
+  removeProjectCover,
+);
+
+router.put(
+  "/:projectId/cover/position",
+  authMiddleware,
+  validateRequest({
+    params: z.object({ projectId: z.string() }),
+    body: z.object({ position: z.number() }),
+  }),
+  updateProjectCoverPosition,
+);
+
+
 
 export default router;

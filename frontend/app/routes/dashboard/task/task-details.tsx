@@ -11,6 +11,9 @@ import { TaskTitle } from "@/components/task/task-title";
 import { Watchers } from "@/components/task/watchers";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { TaskAttachments } from "@/components/task/task-attachments";
+import { TaskTimeTracking } from "@/components/task/task-time-tracking";
+import { TaskDependenciesSelector } from "@/components/task/task-dependencies-selector";
 
 import {
   useAchievedTaskMutation,
@@ -231,11 +234,24 @@ const TaskDetails = () => {
                 taskId={task._id}
               />
             </div>
+            <TaskAttachments
+              taskId={task._id}
+              attachments={task.attachments || []}
+            />
+            <TaskTimeTracking
+              taskId={task._id}
+              timeEntries={task.timeEntries || []}
+            />
 
             <TaskAssigneesSelector
               task={task}
               assignees={task.assignees}
               projectMembers={project.members as any}
+            />
+            <TaskDependenciesSelector
+              taskId={task._id}
+              dependencies={task.dependencies || []}
+              allProjectTasks={project.tasks || []}
             />
 
             <TaskPrioritySelector priority={task.priority} taskId={task._id} />

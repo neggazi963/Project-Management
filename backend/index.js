@@ -1,33 +1,19 @@
-import dotenv from "dotenv";
-dotenv.config();
+import "dotenv/config";
 
 import cors from "cors";
 import express from "express";
+import http from "http";
 import mongoose from "mongoose";
 import morgan from "morgan";
 import dns from "dns";
 import routes from "./routes/index.route.js";
+import { isAllowedOrigin } from "./libs/cors-origins.js";
+import { initSocket } from "./libs/socket.js";
 
 dns.setServers(["8.8.8.8", "8.8.4.4"]);
 
 const app = express();
-
-const allowedOrigins = [process.env.FRONTEND_URL, "http://localhost:5173"];
-
-const isAllowedOrigin = (origin) => {
-  if (!origin) return true; // requests with no origin (curl, mobile apps, server-to-server)
-  if (allowedOrigins.includes(origin)) return true;
-
-  // allow any Vercel preview deployment for this project,
-  // e.g. https://project-management-svmh-<hash>.vercel.app
-  if (
-    /^https:\/\/project-management-svmh(-[a-z0-9]+)?\.vercel\.app$/.test(origin)
-  ) {
-    return true;
-  }
-
-  return false;
-};
+const server = http.createServer(app);
 
 app.use(
   cors({
@@ -51,6 +37,8 @@ mongoose
   .then(() => console.log("Connected to MongoDB"))
   .catch((err) => console.log(err));
 
+initSocket(server);
+
 const PORT = process.env.PORT || 5000;
 
 app.get("/", async (req, res) => {
@@ -70,6 +58,6 @@ app.use((req, res) => {
   res.status(404).json({ message: "Not Found" });
 });
 
-app.listen(PORT, () => {
+server.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 });

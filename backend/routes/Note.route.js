@@ -7,6 +7,7 @@ import {
   getProjectNotes,
   updateNote,
   deleteNote,
+  getMyNotes,
 } from "../controllers/note.controller.js";
 
 const router = express.Router();
@@ -21,6 +22,7 @@ const noteUpdateSchema = z.object({
   content: z.string().optional(),
 });
 
+router.get("/my-notes", authMiddleware, getMyNotes);
 router.post(
   "/:projectId",
   authMiddleware,

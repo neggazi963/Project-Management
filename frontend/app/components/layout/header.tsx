@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { useAuth } from "@/provider/auth-context";
 import type { Workspace } from "@/types";
 import { Button } from "../ui/button";
@@ -16,6 +17,7 @@ import { Link, useLoaderData, useLocation, useNavigate } from "react-router";
 import { WorkspaceAvatar } from "../workspace/workspace-avatar";
 import { ModeToggle } from "../mode-toggle";
 import { GlobalSearch } from "../global-search";
+import { NotificationBell } from "../notification-bell";
 
 interface HeaderProps {
   onWorkspaceSelected: (workspace: Workspace) => void;
@@ -29,20 +31,57 @@ export const Header = ({
   onCreateWorkspace,
 }: HeaderProps) => {
   const navigate = useNavigate();
+  const location = useLocation();
 
   const { user, logout } = useAuth();
   const { workspaces } = useLoaderData() as { workspaces: Workspace[] };
-  const isOnWorkspacePage = useLocation().pathname.includes("/workspace");
+  const isOnWorkspacePage = location.pathname.includes("/workspace");
+
+  // 🔄 RESTAURATION AUTOMATIQUE AU RECHARGEMENT (F5)
+  useEffect(() => {
+    if (!workspaces || workspaces.length === 0) return;
+
+    // Si un workspace est déjà sélectionné, on met juste à jour le localStorage
+    if (selectedWorkspace) {
+      localStorage.setItem("active-workspace-id", selectedWorkspace._id);
+      return;
+    }
+
+    // Sinon (au F5 quand selectedWorkspace vaut null) :
+    // 1. Vérifier si un ID existe dans l'URL (?workspaceId=... ou /workspaces/ID)
+    const queryParams = new URLSearchParams(location.search);
+    const queryWorkspaceId = queryParams.get("workspaceId");
+
+    const pathSegments = location.pathname.split("/");
+    const workspaceIndex = pathSegments.indexOf("workspaces");
+    const pathWorkspaceId =
+      workspaceIndex !== -1 ? pathSegments[workspaceIndex + 1] : null;
+
+    const urlWorkspaceId = queryWorkspaceId || pathWorkspaceId;
+
+    // 2. Sinon récupérer la valeur enregistrée dans localStorage
+    const savedWorkspaceId = localStorage.getItem("active-workspace-id");
+
+    const targetId = urlWorkspaceId || savedWorkspaceId;
+
+    // 3. Retrouver l'objet workspace correspondant ou prendre le 1er par défaut
+    const activeWorkspace =
+      workspaces.find((w) => w._id === targetId) || workspaces[0];
+
+    if (activeWorkspace) {
+      onWorkspaceSelected(activeWorkspace);
+      localStorage.setItem("active-workspace-id", activeWorkspace._id);
+    }
+  }, [workspaces, selectedWorkspace, location, onWorkspaceSelected]);
 
   const handleOnClick = (workspace: Workspace) => {
     onWorkspaceSelected(workspace);
-    const location = window.location;
+    localStorage.setItem("active-workspace-id", workspace._id);
 
     if (isOnWorkspacePage) {
       navigate(`/workspaces/${workspace._id}`);
     } else {
       const basePath = location.pathname;
-
       navigate(`${basePath}?workspaceId=${workspace._id}`);
     }
   };
@@ -107,9 +146,7 @@ export const Header = ({
         </div>
 
         <div className="flex items-center gap-2">
-          <Button variant="ghost" size="icon">
-            <Bell />
-          </Button>
+          <NotificationBell />
 
           <DropdownMenu>
             <DropdownMenuTrigger

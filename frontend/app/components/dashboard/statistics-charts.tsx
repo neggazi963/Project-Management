@@ -1,6 +1,5 @@
 import type {
   ProjectStatusData,
-  StatsCardProps,
   TaskPriorityData,
   TaskTrendsData,
   WorkspaceProductivityData,
@@ -19,6 +18,7 @@ import {
   ChartLegendContent,
   ChartTooltip,
   ChartTooltipContent,
+  type ChartConfig,
 } from "../ui/chart";
 import {
   Bar,
@@ -34,22 +34,62 @@ import {
 } from "recharts";
 
 interface StatisticsChartsProps {
-  stats: StatsCardProps;
-  taskTrendsData: TaskTrendsData[];
-  projectStatusData: ProjectStatusData[];
-  taskPriorityData: TaskPriorityData[];
-  workspaceProductivityData: WorkspaceProductivityData[];
+  taskTrendsData?: TaskTrendsData[];
+  projectStatusData?: ProjectStatusData[];
+  taskPriorityData?: TaskPriorityData[];
+  workspaceProductivityData?: WorkspaceProductivityData[];
 }
 
+// 🎨 Configurations Shadcn Chart (Labels + Couleurs)
+const taskTrendsConfig = {
+  completed: { label: "Completed", color: "#10b981" },
+  inProgress: { label: "In Progress", color: "#3b82f6" },
+  todo: { label: "To Do", color: "#6b7280" },
+} satisfies ChartConfig;
+
+const projectStatusConfig = {
+  Completed: { label: "Completed", color: "#10b981" },
+  "In Progress": { label: "In Progress", color: "#3b82f6" },
+  Planning: { label: "Planning", color: "#f59e0b" },
+} satisfies ChartConfig;
+
+const taskPriorityConfig = {
+  High: { label: "High", color: "#ef4444" },
+  Medium: { label: "Medium", color: "#f59e0b" },
+  Low: { label: "Low", color: "#6b7280" },
+} satisfies ChartConfig;
+
+const productivityConfig = {
+  total: { label: "Total Tasks", color: "#64748b" },
+  completed: { label: "Completed Tasks", color: "#3b82f6" },
+} satisfies ChartConfig;
+
+// ⚙️ Style commun pour les axes
+const commonAxisProps = {
+  stroke: "#888888",
+  fontSize: 12,
+  tickLine: false,
+  axisLine: false,
+};
+
+// 🏷️ Formatage du label pour les Pie Charts
+const renderPieLabel = ({
+  name,
+  percent,
+}: {
+  name?: string;
+  percent?: number;
+}) => `${name} (${((percent ?? 0) * 100).toFixed(0)}%)`;
+
 export const StatisticsCharts = ({
-  stats,
-  taskTrendsData,
-  projectStatusData,
-  taskPriorityData,
-  workspaceProductivityData,
+  taskTrendsData = [],
+  projectStatusData = [],
+  taskPriorityData = [],
+  workspaceProductivityData = [],
 }: StatisticsChartsProps) => {
   return (
-    <div className="grid gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-3 mb-8">
+    <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3 mb-8">
+      {/* 📈 Task Trends */}
       <Card className="lg:col-span-2">
         <CardHeader className="flex flex-row items-center justify-between pb-2">
           <div className="space-y-0.5">
@@ -60,54 +100,33 @@ export const StatisticsCharts = ({
         </CardHeader>
         <CardContent className="w-full overflow-x-auto md:overflow-x-hidden">
           <div className="min-w-87.5">
-            <ChartContainer
-              className="h-75"
-              config={{
-                completed: { color: "#10b981" }, // green
-                inProgress: { color: "#f59e0b" }, // blue
-                todo: { color: "#3b82f6" }, // gray
-              }}
-            >
+            <ChartContainer className="h-75 w-full" config={taskTrendsConfig}>
               <LineChart data={taskTrendsData}>
-                <XAxis
-                  dataKey={"name"}
-                  stroke="#888888"
-                  fontSize={12}
-                  tickLine={false}
-                  axisLine={false}
-                />
-                <YAxis
-                  stroke="#888888"
-                  fontSize={12}
-                  tickLine={false}
-                  axisLine={false}
-                />
-
-                <CartesianGrid strokeDasharray={"3 3"} vertical={false} />
-                <ChartTooltip />
-
+                <XAxis dataKey="name" {...commonAxisProps} />
+                <YAxis {...commonAxisProps} />
+                <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                <ChartTooltip content={<ChartTooltipContent />} />
                 <Line
                   type="monotone"
-                  dataKey={"completed"}
-                  stroke="#10b981"
+                  dataKey="completed"
+                  stroke="var(--color-completed)"
                   strokeWidth={2}
                   dot={{ r: 4 }}
                 />
                 <Line
                   type="monotone"
                   dataKey="inProgress"
-                  stroke="#3b82f6"
+                  stroke="var(--color-inProgress)"
                   strokeWidth={2}
                   dot={{ r: 4 }}
                 />
                 <Line
                   type="monotone"
                   dataKey="todo"
-                  stroke="#6b7280"
+                  stroke="var(--color-todo)"
                   strokeWidth={2}
                   dot={{ r: 4 }}
                 />
-
                 <ChartLegend content={<ChartLegendContent />} />
               </LineChart>
             </ChartContainer>
@@ -115,8 +134,7 @@ export const StatisticsCharts = ({
         </CardContent>
       </Card>
 
-      {/* project status  */}
-
+      {/* 🍕 Project Status */}
       <Card>
         <CardHeader className="flex flex-row items-center justify-between pb-2">
           <div className="space-y-0.5">
@@ -125,19 +143,13 @@ export const StatisticsCharts = ({
             </CardTitle>
             <CardDescription>Project status breakdown</CardDescription>
           </div>
-
           <ChartPie className="size-5 text-muted-foreground" />
         </CardHeader>
-
         <CardContent className="w-full overflow-x-auto md:overflow-x-hidden">
           <div className="min-w-87.5">
             <ChartContainer
-              className="h-75"
-              config={{
-                Completed: { color: "#10b981" },
-                "In Progress": { color: "#3b82f6" },
-                Planning: { color: "#f59e0b" },
-              }}
+              className="h-75 w-full"
+              config={projectStatusConfig}
             >
               <PieChart>
                 <Pie
@@ -149,16 +161,14 @@ export const StatisticsCharts = ({
                   innerRadius={60}
                   outerRadius={80}
                   paddingAngle={2}
-                  label={({ name, percent }) =>
-                    `${name} (${((percent ?? 0) * 100).toFixed(0)}%)`
-                  }
+                  label={renderPieLabel}
                   labelLine={false}
                 >
                   {projectStatusData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
+                    <Cell key={`project-cell-${index}`} fill={entry.color} />
                   ))}
                 </Pie>
-                <ChartTooltip />
+                <ChartTooltip content={<ChartTooltipContent />} />
                 <ChartLegend content={<ChartLegendContent />} />
               </PieChart>
             </ChartContainer>
@@ -166,7 +176,7 @@ export const StatisticsCharts = ({
         </CardContent>
       </Card>
 
-      {/* task priority  */}
+      {/* 🎯 Task Priority */}
       <Card>
         <CardHeader className="flex flex-row items-center justify-between pb-2">
           <div className="space-y-0.5">
@@ -175,38 +185,29 @@ export const StatisticsCharts = ({
             </CardTitle>
             <CardDescription>Task priority breakdown</CardDescription>
           </div>
+          <ChartPie className="size-5 text-muted-foreground" />
         </CardHeader>
-
         <CardContent className="w-full overflow-x-auto md:overflow-x-hidden">
           <div className="min-w-87.5">
-            <ChartContainer
-              className="h-75"
-              config={{
-                High: { color: "#ef4444" },
-                Medium: { color: "#f59e0b" },
-                Low: { color: "#6b7280" },
-              }}
-            >
+            <ChartContainer className="h-75 w-full" config={taskPriorityConfig}>
               <PieChart>
                 <Pie
                   data={taskPriorityData}
                   cx="50%"
                   cy="50%"
+                  dataKey="value"
+                  nameKey="name"
                   innerRadius={60}
                   outerRadius={80}
                   paddingAngle={2}
-                  dataKey="value"
-                  nameKey="name"
-                  label={({ name, percent }) =>
-                    `${name} (${((percent ?? 0) * 100).toFixed(0)}%)`
-                  }
+                  label={renderPieLabel}
                   labelLine={false}
                 >
-                  {taskPriorityData?.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
+                  {taskPriorityData.map((entry, index) => (
+                    <Cell key={`priority-cell-${index}`} fill={entry.color} />
                   ))}
                 </Pie>
-                <ChartTooltip />
+                <ChartTooltip content={<ChartTooltipContent />} />
                 <ChartLegend content={<ChartLegendContent />} />
               </PieChart>
             </ChartContainer>
@@ -214,7 +215,7 @@ export const StatisticsCharts = ({
         </CardContent>
       </Card>
 
-      {/* Workspace Productivity Chart */}
+      {/* 📊 Workspace Productivity */}
       <Card className="lg:col-span-2">
         <CardHeader className="flex flex-row items-center justify-between pb-2">
           <div className="space-y-0.5">
@@ -223,46 +224,29 @@ export const StatisticsCharts = ({
             </CardTitle>
             <CardDescription>Task completion by project</CardDescription>
           </div>
-          <ChartBarBig className="h-5 w-5 text-muted-foreground" />
+          <ChartBarBig className="size-5 text-muted-foreground" />
         </CardHeader>
         <CardContent className="w-full overflow-x-auto md:overflow-x-hidden">
           <div className="min-w-87.5">
-            <ChartContainer
-              className="h-75"
-              config={{
-                completed: { color: "#3b82f6" },
-                total: { color: "red" },
-              }}
-            >
+            <ChartContainer className="h-75 w-full" config={productivityConfig}>
               <BarChart
                 data={workspaceProductivityData}
-                barGap={0}
+                barGap={4}
                 barSize={20}
               >
-                <XAxis
-                  dataKey="name"
-                  stroke="#888888"
-                  fontSize={12}
-                  tickLine={false}
-                  axisLine={false}
-                />
-                <YAxis
-                  stroke="#888888"
-                  fontSize={12}
-                  tickLine={false}
-                  axisLine={false}
-                />
+                <XAxis dataKey="name" {...commonAxisProps} />
+                <YAxis {...commonAxisProps} />
                 <CartesianGrid strokeDasharray="3 3" vertical={false} />
                 <ChartTooltip content={<ChartTooltipContent />} />
                 <Bar
                   dataKey="total"
-                  fill="#000"
+                  fill="var(--color-total)"
                   radius={[4, 4, 0, 0]}
                   name="Total Tasks"
                 />
                 <Bar
                   dataKey="completed"
-                  fill="#3b82f6"
+                  fill="var(--color-completed)"
                   radius={[4, 4, 0, 0]}
                   name="Completed Tasks"
                 />

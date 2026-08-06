@@ -68,7 +68,18 @@ export const ProjectCard = ({
           <Trash2 className="size-4" />
           <span className="sr-only">Delete Project</span>
         </Button>
-
+        {project.coverImage && (
+          <div className="w-full h-24 overflow-hidden rounded-t-lg -mt-6 -mx-6 mb-2">
+            <img
+              src={project.coverImage}
+              alt={project.title}
+              className="w-full h-full object-cover"
+              style={{
+                objectPosition: `center ${project.coverPosition ?? 50}%`,
+              }}
+            />
+          </div>
+        )}
         <CardHeader>
           <div className="flex items-center justify-between pr-8">
             <CardTitle>{project.title}</CardTitle>

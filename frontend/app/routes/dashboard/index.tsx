@@ -49,6 +49,7 @@ const Dashboard = () => {
       </div>
     );
   }
+
   return (
     <div className="space-y-8 2xl:space-y-12">
       <div className="flex items-center justify-between">
@@ -58,7 +59,6 @@ const Dashboard = () => {
       <StatsCard data={data.stats} />
 
       <StatisticsCharts
-        stats={data.stats}
         taskTrendsData={data.taskTrendsData}
         projectStatusData={data.projectStatusData}
         taskPriorityData={data.taskPriorityData}

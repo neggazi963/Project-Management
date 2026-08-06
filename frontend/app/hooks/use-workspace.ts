@@ -1,6 +1,8 @@
 import type { WorkspaceForm } from "@/components/workspace/create-workspace";
+import type { Workspace } from "@/types"; // Ajustez le chemin vers votre index.ts
 import { fetchData, postData, deleteData } from "@/lib/fetch-util";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useWorkspaceStore } from "@/store/use-workspace-store";
 
 export const useCreateWorkspace = () => {
   return useMutation({
@@ -8,11 +10,33 @@ export const useCreateWorkspace = () => {
   });
 };
 
+// 1. Typer useQuery avec Workspace[]
 export const useGetWorkspacesQuery = () => {
-  return useQuery({
+  return useQuery<Workspace[]>({
     queryKey: ["workspaces"],
     queryFn: async () => fetchData("/workspaces"),
   });
+};
+
+// 2. Hook personnalisé typé qui gère la sélection et la persistance au rafraîchissement
+export const useCurrentWorkspace = () => {
+  const { data: workspaces, isLoading, isError } = useGetWorkspacesQuery();
+  const { selectedWorkspaceId, setSelectedWorkspaceId } = useWorkspaceStore();
+
+  const currentWorkspace: Workspace | null =
+    workspaces?.find((w) => w._id === selectedWorkspaceId) ||
+    workspaces?.[0] ||
+    null;
+
+  return {
+    currentWorkspace,
+    selectedWorkspaceId: currentWorkspace?._id || null,
+    setSelectedWorkspace: (workspaceId: string) =>
+      setSelectedWorkspaceId(workspaceId),
+    workspaces,
+    isLoading,
+    isError,
+  };
 };
 
 export const useGetWorkspaceQuery = (workspaceId: string) => {
