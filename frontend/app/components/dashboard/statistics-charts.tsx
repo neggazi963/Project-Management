@@ -3,6 +3,7 @@ import type {
   TaskPriorityData,
   TaskTrendsData,
   WorkspaceProductivityData,
+  WorkloadData,
 } from "@/types";
 import {
   Card,
@@ -11,7 +12,7 @@ import {
   CardHeader,
   CardTitle,
 } from "../ui/card";
-import { ChartBarBig, ChartLine, ChartPie } from "lucide-react";
+import { ChartBarBig, ChartLine, ChartPie, Users } from "lucide-react";
 import {
   ChartContainer,
   ChartLegend,
@@ -38,6 +39,7 @@ interface StatisticsChartsProps {
   projectStatusData?: ProjectStatusData[];
   taskPriorityData?: TaskPriorityData[];
   workspaceProductivityData?: WorkspaceProductivityData[];
+  workloadData?: WorkloadData[];
 }
 
 // 🎨 Configurations Shadcn Chart (Labels + Couleurs)
@@ -64,6 +66,10 @@ const productivityConfig = {
   completed: { label: "Completed Tasks", color: "#3b82f6" },
 } satisfies ChartConfig;
 
+const workloadConfig = {
+  tasks: { label: "Active Tasks", color: "#8b5cf6" },
+} satisfies ChartConfig;
+
 // ⚙️ Style commun pour les axes
 const commonAxisProps = {
   stroke: "#888888",
@@ -86,6 +92,7 @@ export const StatisticsCharts = ({
   projectStatusData = [],
   taskPriorityData = [],
   workspaceProductivityData = [],
+  workloadData = [],
 }: StatisticsChartsProps) => {
   return (
     <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3 mb-8">
@@ -254,6 +261,51 @@ export const StatisticsCharts = ({
               </BarChart>
             </ChartContainer>
           </div>
+        </CardContent>
+      </Card>
+
+      {/* 👥 Team Workload */}
+      <Card className="lg:col-span-2">
+        <CardHeader className="flex flex-row items-center justify-between pb-2">
+          <div className="space-y-0.5">
+            <CardTitle className="text-base font-medium">
+              Team Workload
+            </CardTitle>
+            <CardDescription>Active tasks per member</CardDescription>
+          </div>
+          <Users className="size-5 text-muted-foreground" />
+        </CardHeader>
+        <CardContent className="w-full overflow-x-auto md:overflow-x-hidden">
+          {workloadData.length === 0 ? (
+            <div className="h-75 flex items-center justify-center text-sm text-muted-foreground">
+              No assigned tasks yet
+            </div>
+          ) : (
+            <div className="min-w-87.5">
+              <ChartContainer className="h-75 w-full" config={workloadConfig}>
+                <BarChart data={workloadData} layout="vertical" barSize={18}>
+                  <XAxis
+                    type="number"
+                    allowDecimals={false}
+                    {...commonAxisProps}
+                  />
+                  <YAxis
+                    type="category"
+                    dataKey="name"
+                    width={100}
+                    {...commonAxisProps}
+                  />
+                  <CartesianGrid strokeDasharray="3 3" horizontal={false} />
+                  <ChartTooltip content={<ChartTooltipContent />} />
+                  <Bar
+                    dataKey="tasks"
+                    fill="var(--color-tasks)"
+                    radius={[0, 4, 4, 0]}
+                  />
+                </BarChart>
+              </ChartContainer>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

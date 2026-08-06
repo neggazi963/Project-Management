@@ -1,16 +1,18 @@
 import { RecentProjects } from "@/components/dashboard/recnt-projects";
 import { StatsCard } from "@/components/dashboard/stat-card";
 import { StatisticsCharts } from "@/components/dashboard/statistics-charts";
+import { UpcomingDeadlines } from "@/components/dashboard/upcoming-deadlines";
 import { Loader } from "@/components/loader";
-import { UpcomingTasks } from "@/components/upcoming-tasks";
+
 import { useGetWorkspaceStatsQuery } from "@/hooks/use-workspace";
 import type {
   Project,
   ProjectStatusData,
   StatsCardProps,
-  Task,
   TaskPriorityData,
   TaskTrendsData,
+  UpcomingDeadline,
+  WorkloadData,
   WorkspaceProductivityData,
 } from "@/types";
 import { useSearchParams } from "react-router";
@@ -27,7 +29,8 @@ const Dashboard = () => {
           projectStatusData: ProjectStatusData[];
           taskPriorityData: TaskPriorityData[];
           workspaceProductivityData: WorkspaceProductivityData[];
-          upcomingTasks: Task[];
+          workloadData: WorkloadData[];
+          upcomingDeadlines: UpcomingDeadline[];
           recentProjects: Project[];
         }
       | undefined;
@@ -63,11 +66,12 @@ const Dashboard = () => {
         projectStatusData={data.projectStatusData}
         taskPriorityData={data.taskPriorityData}
         workspaceProductivityData={data.workspaceProductivityData}
+        workloadData={data.workloadData}
       />
 
       <div className="grid gap-6 lg:grid-cols-2">
         <RecentProjects data={data.recentProjects} />
-        <UpcomingTasks data={data.upcomingTasks} />
+        <UpcomingDeadlines data={data.upcomingDeadlines} />
       </div>
     </div>
   );

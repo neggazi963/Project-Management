@@ -79,7 +79,8 @@ const getTaskById = async (req, res) => {
     const task = await Task.findById(taskId)
       .populate("assignees", "name profilePicture")
       .populate("watchers", "name profilePicture")
-      .populate("timeEntries.user", "name profilePicture");
+      .populate("timeEntries.user", "name profilePicture")
+      .populate("dependencies", "title status"); 
 
     if (!task) {
       return res.status(404).json({
@@ -92,7 +93,24 @@ const getTaskById = async (req, res) => {
       "name profilePicture",
     );
 
-    res.status(200).json({ task, project });
+    if (!project) {
+      return res.status(404).json({
+        message: "Project not found",
+      });
+    }
+
+    
+    const allProjectTasks = await Task.find({ project: task.project }).select(
+      "_id title status",
+    );
+
+    res.status(200).json({
+      task,
+      project: {
+        ...project.toObject(),
+        tasks: allProjectTasks,
+      },
+    });
   } catch (error) {
     console.log(error);
     return res.status(500).json({
@@ -1079,151 +1097,150 @@ const deleteTimeEntry = async (req, res) => {
     console.log(error);
     return res.status(500).json({ message: "Internal server error" });
   }
-}
-  const updateTaskSchedule = async (req, res) => {
-    try {
-      const { taskId } = req.params;
-      const { startDate, dueDate } = req.body;
+};
+const updateTaskSchedule = async (req, res) => {
+  try {
+    const { taskId } = req.params;
+    const { startDate, dueDate } = req.body;
 
-      const task = await Task.findById(taskId);
+    const task = await Task.findById(taskId);
 
-      if (!task) {
-        return res.status(404).json({ message: "Task not found" });
-      }
-
-      const project = await Project.findById(task.project);
-
-      if (!project) {
-        return res.status(404).json({ message: "Project not found" });
-      }
-
-      const isMember = project.members.some(
-        (member) => member.user.toString() === req.user._id.toString(),
-      );
-
-      if (!isMember) {
-        return res.status(403).json({
-          message: "You are not a member of this project",
-        });
-      }
-
-      if (startDate) task.startDate = new Date(startDate);
-      if (dueDate) task.dueDate = new Date(dueDate);
-
-      if (task.startDate && task.dueDate && task.startDate > task.dueDate) {
-        return res
-          .status(400)
-          .json({ message: "Start date must be before due date" });
-      }
-
-      await task.save();
-
-      await recordActivity(req.user._id, "updated_task", "Task", taskId, {
-        description: `updated schedule for task ${task.title}`,
-      });
-
-      res.status(200).json(task);
-    } catch (error) {
-      console.log(error);
-      return res.status(500).json({ message: "Internal server error" });
+    if (!task) {
+      return res.status(404).json({ message: "Task not found" });
     }
-  };
+
+    const project = await Project.findById(task.project);
+
+    if (!project) {
+      return res.status(404).json({ message: "Project not found" });
+    }
+
+    const isMember = project.members.some(
+      (member) => member.user.toString() === req.user._id.toString(),
+    );
+
+    if (!isMember) {
+      return res.status(403).json({
+        message: "You are not a member of this project",
+      });
+    }
+
+    if (startDate) task.startDate = new Date(startDate);
+    if (dueDate) task.dueDate = new Date(dueDate);
+
+    if (task.startDate && task.dueDate && task.startDate > task.dueDate) {
+      return res
+        .status(400)
+        .json({ message: "Start date must be before due date" });
+    }
+
+    await task.save();
+
+    await recordActivity(req.user._id, "updated_task", "Task", taskId, {
+      description: `updated schedule for task ${task.title}`,
+    });
+
+    res.status(200).json(task);
+  } catch (error) {
+    console.log(error);
+    return res.status(500).json({ message: "Internal server error" });
+  }
+};
 
 const updateTaskDependencies = async (req, res) => {
-    try {
-      const { taskId } = req.params;
-      const { dependencies } = req.body; // array of task ids
+  try {
+    const { taskId } = req.params;
+    const { dependencies } = req.body; // array of task ids
 
-      const task = await Task.findById(taskId);
+    const task = await Task.findById(taskId);
 
-      if (!task) {
-        return res.status(404).json({ message: "Task not found" });
-      }
-
-      const project = await Project.findById(task.project);
-
-      if (!project) {
-        return res.status(404).json({ message: "Project not found" });
-      }
-
-      const isMember = project.members.some(
-        (member) => member.user.toString() === req.user._id.toString(),
-      );
-
-      if (!isMember) {
-        return res.status(403).json({
-          message: "You are not a member of this project",
-        });
-      }
-
-      if (dependencies.includes(taskId)) {
-        return res
-          .status(400)
-          .json({ message: "A task cannot depend on itself" });
-      }
-
-      const allProjectTasks = await Task.find({ project: task.project }).select(
-        "_id dependencies",
-      );
-      const projectTaskIds = new Set(
-        allProjectTasks.map((t) => t._id.toString()),
-      );
-
-      for (const depId of dependencies) {
-        if (!projectTaskIds.has(depId)) {
-          return res.status(400).json({
-            message: "All dependencies must belong to the same project",
-          });
-        }
-      }
-
-      // Cycle detection: build the dependency graph for the whole project,
-      // apply the proposed change, and walk it with DFS looking for a cycle.
-      const graph = new Map();
-      for (const t of allProjectTasks) {
-        graph.set(
-          t._id.toString(),
-          (t.dependencies || []).map((d) => d.toString()),
-        );
-      }
-      graph.set(taskId, dependencies);
-
-      const visiting = new Set();
-      const visited = new Set();
-
-      const hasCycle = (nodeId) => {
-        if (visiting.has(nodeId)) return true;
-        if (visited.has(nodeId)) return false;
-
-        visiting.add(nodeId);
-        for (const dep of graph.get(nodeId) || []) {
-          if (hasCycle(dep)) return true;
-        }
-        visiting.delete(nodeId);
-        visited.add(nodeId);
-        return false;
-      };
-
-      if (hasCycle(taskId)) {
-        return res.status(400).json({
-          message: "This would create a circular dependency",
-        });
-      }
-
-      task.dependencies = dependencies;
-      await task.save();
-
-      await recordActivity(req.user._id, "updated_task", "Task", taskId, {
-        description: `updated dependencies for task ${task.title}`,
-      });
-
-      res.status(200).json(task);
-    } catch (error) {
-      console.log(error);
-      return res.status(500).json({ message: "Internal server error" });
+    if (!task) {
+      return res.status(404).json({ message: "Task not found" });
     }
-  };
 
+    const project = await Project.findById(task.project);
+
+    if (!project) {
+      return res.status(404).json({ message: "Project not found" });
+    }
+
+    const isMember = project.members.some(
+      (member) => member.user.toString() === req.user._id.toString(),
+    );
+
+    if (!isMember) {
+      return res.status(403).json({
+        message: "You are not a member of this project",
+      });
+    }
+
+    if (dependencies.includes(taskId)) {
+      return res
+        .status(400)
+        .json({ message: "A task cannot depend on itself" });
+    }
+
+    const allProjectTasks = await Task.find({ project: task.project }).select(
+      "_id dependencies",
+    );
+    const projectTaskIds = new Set(
+      allProjectTasks.map((t) => t._id.toString()),
+    );
+
+    for (const depId of dependencies) {
+      if (!projectTaskIds.has(depId)) {
+        return res.status(400).json({
+          message: "All dependencies must belong to the same project",
+        });
+      }
+    }
+
+    // Cycle detection: build the dependency graph for the whole project,
+    // apply the proposed change, and walk it with DFS looking for a cycle.
+    const graph = new Map();
+    for (const t of allProjectTasks) {
+      graph.set(
+        t._id.toString(),
+        (t.dependencies || []).map((d) => d.toString()),
+      );
+    }
+    graph.set(taskId, dependencies);
+
+    const visiting = new Set();
+    const visited = new Set();
+
+    const hasCycle = (nodeId) => {
+      if (visiting.has(nodeId)) return true;
+      if (visited.has(nodeId)) return false;
+
+      visiting.add(nodeId);
+      for (const dep of graph.get(nodeId) || []) {
+        if (hasCycle(dep)) return true;
+      }
+      visiting.delete(nodeId);
+      visited.add(nodeId);
+      return false;
+    };
+
+    if (hasCycle(taskId)) {
+      return res.status(400).json({
+        message: "This would create a circular dependency",
+      });
+    }
+
+    task.dependencies = dependencies;
+    await task.save();
+
+    await recordActivity(req.user._id, "updated_task", "Task", taskId, {
+      description: `updated dependencies for task ${task.title}`,
+    });
+
+    res.status(200).json(task);
+  } catch (error) {
+    console.log(error);
+    return res.status(500).json({ message: "Internal server error" });
+  }
+};
 
 export {
   createTask,

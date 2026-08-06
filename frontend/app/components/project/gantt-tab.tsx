@@ -18,7 +18,7 @@ const scales = [
 
 // Custom grid columns without the default "add-task" (+) column
 const columns = [
-  { id: "text", header: "Task name", flexgrow: 2 },
+  { id: "text", header: "Task name", flexgrow: 3, width: 200 },
   { id: "start", header: "Start date", flexgrow: 1, align: "center" as const },
   { id: "duration", header: "Duration", align: "center" as const, flexgrow: 1 },
 ];
@@ -105,7 +105,7 @@ export const GanttTab = ({ tasks }: GanttTabProps) => {
   return (
     <div
       className="border rounded-lg overflow-hidden"
-      style={{ height: "70vh" }}
+      style={{ height: "80vh" }}
     >
       <Willow>
         <Gantt
@@ -114,6 +114,9 @@ export const GanttTab = ({ tasks }: GanttTabProps) => {
           scales={scales}
           columns={columns}
           init={init}
+          cellWidth={45}
+          cellHeight={50}
+          scaleHeight={44}
         />
       </Willow>
     </div>

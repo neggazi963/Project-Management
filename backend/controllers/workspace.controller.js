@@ -104,7 +104,10 @@ const getWorkspaceStats = async (req, res) => {
   try {
     const { workspaceId } = req.params;
 
-    const workspace = await Workspace.findById(workspaceId);
+    const workspace = await Workspace.findById(workspaceId).populate(
+      "members.user",
+      "name profilePicture",
+    );
 
     if (!workspace) {
       return res.status(404).json({
@@ -113,7 +116,7 @@ const getWorkspaceStats = async (req, res) => {
     }
 
     const isMember = workspace.members.some(
-      (member) => member.user.toString() === req.user._id.toString(),
+      (member) => member.user._id.toString() === req.user._id.toString(),
     );
 
     if (!isMember) {
@@ -125,10 +128,12 @@ const getWorkspaceStats = async (req, res) => {
     const [totalProjects, projects] = await Promise.all([
       Project.countDocuments({ workspace: workspaceId }),
       Project.find({ workspace: workspaceId })
-        .populate(
-          "tasks",
-          "title status dueDate project updatedAt isArchived priority",
-        )
+        .populate({
+          path: "tasks",
+          select:
+            "title status dueDate project updatedAt createdAt isArchived priority assignees",
+          populate: { path: "assignees", select: "name profilePicture" },
+        })
         .sort({ createdAt: -1 }),
     ]);
 
@@ -139,9 +144,6 @@ const getWorkspaceStats = async (req, res) => {
     const totalProjectInProgress = projects.filter(
       (project) => project.status === "In Progress",
     ).length;
-    // const totalProjectCompleted = projects.filter(
-    //   (project) => project.status === "Completed"
-    // ).length;
 
     const totalTaskCompleted = projects.reduce((acc, project) => {
       return (
@@ -162,18 +164,83 @@ const getWorkspaceStats = async (req, res) => {
       );
     }, 0);
 
-    const tasks = projects.flatMap((project) => project.tasks);
+    // Attache le titre du projet à chaque tâche pour les vues à plat
+    // (échéances à venir, charge de travail, etc.)
+    const tasks = projects.flatMap((project) =>
+      project.tasks.map((task) => {
+        const plain = task.toObject();
+        return { ...plain, projectTitle: project.title };
+      }),
+    );
 
-    // get upcoming task in next 7 days
+    const now = new Date();
 
-    const upcomingTasks = tasks.filter((task) => {
-      const taskDate = new Date(task.dueDate);
-      const today = new Date();
-      return (
-        taskDate > today &&
-        taskDate <= new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000)
-      );
-    });
+    // Tâches en retard : échéance dépassée, pas "Done", pas archivées
+    const overdueTasks = tasks.filter(
+      (task) =>
+        task.dueDate &&
+        new Date(task.dueDate) < now &&
+        task.status !== "Done" &&
+        !task.isArchived,
+    );
+    const totalTaskOverdue = overdueTasks.length;
+
+    // Taux de complétion global
+    const completionRate =
+      totalTasks > 0
+        ? Math.round((totalTaskCompleted / totalTasks) * 1000) / 10
+        : 0;
+
+    // Temps moyen de complétion (en jours) sur les tâches "Done"
+    const doneTasks = tasks.filter((task) => task.status === "Done");
+    let avgCompletionDays = null;
+    if (doneTasks.length > 0) {
+      const totalDays = doneTasks.reduce((acc, task) => {
+        const created = new Date(task.createdAt).getTime();
+        const updated = new Date(task.updatedAt).getTime();
+        return acc + (updated - created) / (1000 * 60 * 60 * 24);
+      }, 0);
+      avgCompletionDays = Math.round((totalDays / doneTasks.length) * 10) / 10;
+    }
+
+    // Échéances à venir (7 prochains jours, pas "Done", pas archivées)
+    const in7Days = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+    const upcomingDeadlines = tasks
+      .filter(
+        (task) =>
+          task.dueDate &&
+          new Date(task.dueDate) >= now &&
+          new Date(task.dueDate) <= in7Days &&
+          task.status !== "Done" &&
+          !task.isArchived,
+      )
+      .sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate))
+      .slice(0, 5)
+      .map((task) => ({
+        _id: task._id,
+        title: task.title,
+        dueDate: task.dueDate,
+        status: task.status,
+        priority: task.priority,
+        projectTitle: task.projectTitle,
+      }));
+
+    // Charge de travail par membre (tâches actives assignées, pas "Done")
+    const workloadData = workspace.members
+      .map((member) => {
+        const activeTasks = tasks.filter(
+          (task) =>
+            !task.isArchived &&
+            task.status !== "Done" &&
+            (task.assignees || []).some(
+              (a) => a._id.toString() === member.user._id.toString(),
+            ),
+        ).length;
+
+        return { name: member.user.name, tasks: activeTasks };
+      })
+      .sort((a, b) => b.tasks - a.tasks)
+      .slice(0, 8);
 
     const taskTrendsData = [
       { name: "Sun", completed: 0, inProgress: 0, toDo: 0 },
@@ -185,51 +252,45 @@ const getWorkspaceStats = async (req, res) => {
       { name: "Sat", completed: 0, inProgress: 0, toDo: 0 },
     ];
 
-    // get last 7 days tasks date
     const last7Days = Array.from({ length: 7 }, (_, i) => {
       const date = new Date();
       date.setDate(date.getDate() - i);
       return date;
     }).reverse();
 
-    // populate
+    for (const task of tasks) {
+      const taskDate = new Date(task.updatedAt);
 
-    for (const project of projects) {
-      for (const task of project.tasks) {
-        const taskDate = new Date(task.updatedAt);
+      const dayInDate = last7Days.findIndex(
+        (date) =>
+          date.getDate() === taskDate.getDate() &&
+          date.getMonth() === taskDate.getMonth() &&
+          date.getFullYear() === taskDate.getFullYear(),
+      );
 
-        const dayInDate = last7Days.findIndex(
-          (date) =>
-            date.getDate() === taskDate.getDate() &&
-            date.getMonth() === taskDate.getMonth() &&
-            date.getFullYear() === taskDate.getFullYear(),
-        );
+      if (dayInDate !== -1) {
+        const dayName = last7Days[dayInDate].toLocaleDateString("en-US", {
+          weekday: "short",
+        });
 
-        if (dayInDate !== -1) {
-          const dayName = last7Days[dayInDate].toLocaleDateString("en-US", {
-            weekday: "short",
-          });
+        const dayData = taskTrendsData.find((day) => day.name === dayName);
 
-          const dayData = taskTrendsData.find((day) => day.name === dayName);
-
-          if (dayData) {
-            switch (task.status) {
-              case "Done":
-                dayData.completed++;
-                break;
-              case "In Progress":
-                dayData.inProgress++;
-                break;
-              case "To Do":
-                dayData.toDo++;
-                break;
-            }
+        if (dayData) {
+          switch (task.status) {
+            case "Done":
+              dayData.completed++;
+              break;
+            case "In Progress":
+              dayData.inProgress++;
+              break;
+            case "To Do":
+              dayData.toDo++;
+              break;
           }
         }
       }
     }
 
-    // get project status distribution
     const projectStatusData = [
       { name: "Completed", value: 0, color: "#10b981" },
       { name: "In Progress", value: 0, color: "#3b82f6" },
@@ -250,7 +311,6 @@ const getWorkspaceStats = async (req, res) => {
       }
     }
 
-    // Task priority distribution
     const taskPriorityData = [
       { name: "High", value: 0, color: "#ef4444" },
       { name: "Medium", value: 0, color: "#f59e0b" },
@@ -296,6 +356,9 @@ const getWorkspaceStats = async (req, res) => {
       totalTaskCompleted,
       totalTaskToDo,
       totalTaskInProgress,
+      totalTaskOverdue,
+      completionRate,
+      avgCompletionDays,
     };
 
     res.status(200).json({
@@ -304,7 +367,8 @@ const getWorkspaceStats = async (req, res) => {
       projectStatusData,
       taskPriorityData,
       workspaceProductivityData,
-      upcomingTasks,
+      workloadData,
+      upcomingDeadlines,
       recentProjects: projects.slice(0, 5),
     });
   } catch (error) {

@@ -374,6 +374,34 @@ const updateProjectCoverPosition = async (req, res) => {
   }
 };
 
+const updateProject = async (req, res) => {
+  try {
+    const { projectId } = req.params;
+    const { title, description, status, startDate, dueDate, tags } = req.body;
+
+    const project = await Project.findById(projectId);
+    if (!project) {
+      return res.status(404).json({ error: "Project not found" });
+    }
+
+    // Vérifie que l'utilisateur appartient au workspace du projet
+    // (adapte selon ta logique d'autorisation existante, ex: checkWorkspaceMembership)
+
+    if (title !== undefined) project.title = title;
+    if (description !== undefined) project.description = description;
+    if (status !== undefined) project.status = status;
+    if (startDate !== undefined) project.startDate = startDate;
+    if (dueDate !== undefined) project.dueDate = dueDate;
+    if (tags !== undefined) project.tags = tags;
+
+    await project.save();
+
+    res.status(200).json(project);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Failed to update project" });
+  }
+};
 
 export {
   createProject,
@@ -386,4 +414,5 @@ export {
   setProjectCoverUrl,
   removeProjectCover,
   updateProjectCoverPosition,
+  updateProject,
 };

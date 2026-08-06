@@ -248,11 +248,11 @@ const TaskDetails = () => {
               assignees={task.assignees}
               projectMembers={project.members as any}
             />
-            <TaskDependenciesSelector
+            {/* <TaskDependenciesSelector
               taskId={task._id}
               dependencies={task.dependencies || []}
               allProjectTasks={project.tasks || []}
-            />
+            /> */}
 
             <TaskPrioritySelector priority={task.priority} taskId={task._id} />
 

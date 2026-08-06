@@ -141,3 +141,20 @@ export const useUpdateProjectCoverPositionMutation = () => {
     },
   });
 };
+
+export const useUpdateProjectMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (data: {
+      projectId: string;
+      projectData: Partial<CreateProjectFormData>;
+    }) => updateData(`/projects/${data.projectId}`, data.projectData),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["workspace"] });
+      queryClient.invalidateQueries({
+        queryKey: ["project", variables.projectId],
+      });
+    },
+  });
+};

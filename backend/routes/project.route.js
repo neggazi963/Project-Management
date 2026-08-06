@@ -12,7 +12,7 @@ import {
   setProjectCoverUrl,
   removeProjectCover,
   updateProjectCoverPosition,
-
+  updateProject,
 } from "../controllers/project.controller.js";
 import { z } from "zod";
 import upload from "../middleware/upload.middleware.js";
@@ -104,6 +104,14 @@ router.put(
   updateProjectCoverPosition,
 );
 
-
+router.put(
+  "/:projectId",
+  authMiddleware,
+  validateRequest({
+    params: z.object({ projectId: z.string() }),
+    body: projectSchema,
+  }),
+  updateProject,
+);
 
 export default router;

@@ -203,13 +203,13 @@ export interface TaskDependency {
 export interface Note {
   _id: string;
   title: string;
-  content: string; 
+  content: string;
   project?: {
     _id: string;
     title: string;
     workspace: string; // ObjectId
   };
-  
+
   createdBy?: {
     _id: string;
     name: string;
@@ -217,4 +217,31 @@ export interface Note {
   };
   createdAt: string;
   updatedAt: string;
+}
+
+// Remplace StatsCardProps par cette version étendue
+export interface StatsCardProps {
+  totalProjects: number;
+  totalTasks: number;
+  totalProjectInProgress: number;
+  totalTaskCompleted: number;
+  totalTaskToDo: number;
+  totalTaskInProgress: number;
+  totalTaskOverdue: number;
+  completionRate: number; // pourcentage, ex: 62.5
+  avgCompletionDays: number | null; // null si aucune tâche "Done"
+}
+
+export interface WorkloadData {
+  name: string;
+  tasks: number;
+}
+
+export interface UpcomingDeadline {
+  _id: string;
+  title: string;
+  dueDate: Date;
+  status: TaskStatus;
+  priority: TaskPriority;
+  projectTitle: string;
 }

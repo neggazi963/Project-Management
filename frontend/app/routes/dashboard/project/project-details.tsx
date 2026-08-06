@@ -15,13 +15,20 @@ import { getProjectProgress } from "@/lib";
 import { cn } from "@/lib/utils";
 import type { Project, Task, TaskStatus } from "@/types";
 import { format } from "date-fns";
-import { AlertCircle, Calendar, CheckCircle, Clock } from "lucide-react";
+import {
+  AlertCircle,
+  Calendar,
+  CalendarClock,
+  CheckCircle,
+  Clock,
+} from "lucide-react";
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
 import { GanttTab } from "@/components/project/gantt-tab";
 import { ProjectCover } from "@/components/project/project-cover";
+import { EditProjectDialog } from "@/components/project/edit-project-dialog";
 import {
   DndContext,
   DragOverlay,
@@ -46,6 +53,7 @@ const ProjectDetails = () => {
 
   const [isCreateTask, setIsCreateTask] = useState(false);
   const [taskFilter, setTaskFilter] = useState<TaskStatus | "All">("All");
+  const [isEditProject, setIsEditProject] = useState(false);
   const [activeTask, setActiveTask] = useState<Task | null>(null);
 
   const { data, isLoading } = UseProjectQuery(projectId!) as {
@@ -63,8 +71,7 @@ const ProjectDetails = () => {
       activationConstraint: { distance: 5 },
     }),
   );
-
-  if (isLoading)
+  if (isLoading || !data)
     return (
       <div>
         <Loader />
@@ -72,6 +79,7 @@ const ProjectDetails = () => {
     );
 
   const { project, tasks } = data;
+
   const projectProgress = getProjectProgress(tasks);
 
   const handleTaskClick = (taskId: string) => {
@@ -126,9 +134,54 @@ const ProjectDetails = () => {
           <div className="flex items-center gap-3">
             <h1 className="text-xl md:text-2xl font-bold">{project.title}</h1>
           </div>
+
           {project.description && (
             <p className="text-sm text-gray-500">{project.description}</p>
           )}
+
+          <div className="flex flex-wrap items-center gap-2 mt-10">
+            {project.status && (
+              <Badge
+                variant="outline"
+                className={cn(
+                  "font-medium",
+                  project.status === "Completed" &&
+                    "bg-green-500/10 text-green-600 border-green-500/20",
+                  project.status === "In Progress" &&
+                    "bg-blue-500/10 text-blue-600 border-blue-500/20",
+                  project.status === "Planning" &&
+                    "bg-yellow-500/10 text-yellow-600 border-yellow-500/20",
+                  project.status === "On Hold" &&
+                    "bg-orange-500/10 text-orange-600 border-orange-500/20",
+                  project.status === "Cancelled" &&
+                    "bg-red-500/10 text-red-600 border-red-500/20",
+                )}
+              >
+                {project.status}
+              </Badge>
+            )}
+
+            {project.startDate && (
+              <span className="inline-flex items-center gap-1 text-xs text-muted-foreground bg-muted/50 rounded-full px-2.5 py-1">
+                <Calendar className="size-3" />
+                start date : {format(new Date(project.startDate), "MMM d, yyyy")}
+              </span>
+            )}
+
+            {project.dueDate && (
+              <span className="inline-flex items-center gap-1 text-xs text-muted-foreground bg-muted/50 rounded-full px-2.5 py-1">
+                <CalendarClock className="size-3" />
+                due date : {format(new Date(project.dueDate), "MMM d, yyyy")}
+              </span>
+            )}
+
+            {project.createdAt && (
+              <span className="inline-flex items-center gap-1 text-xs text-muted-foreground bg-muted/50 rounded-full px-2.5 py-1">
+                <Clock className="size-3" />
+                created at : {format(new Date(project.createdAt), "MMM d, yyyy")}
+              </span>
+            )}
+          </div>
         </div>
 
         <div className="flex flex-col sm:flex-row gap-3">
@@ -144,8 +197,15 @@ const ProjectDetails = () => {
               {projectProgress}%
             </span>
           </div>
-
+          <Button variant="outline" onClick={() => setIsEditProject(true)}>
+            Edit
+          </Button>
           <Button onClick={() => setIsCreateTask(true)}>Add Task</Button>
+          <EditProjectDialog
+            open={isEditProject}
+            onOpenChange={setIsEditProject}
+            project={project}
+          />
         </div>
       </div>
 
