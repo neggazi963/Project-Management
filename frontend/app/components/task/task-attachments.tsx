@@ -18,6 +18,7 @@ import {
 interface TaskAttachmentsProps {
   taskId: string;
   attachments: Attachment[];
+  canEdit?: boolean;
 }
 
 const formatFileSize = (bytes?: number) => {
@@ -39,6 +40,7 @@ const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 export const TaskAttachments = ({
   taskId,
   attachments,
+  canEdit = true,
 }: TaskAttachmentsProps) => {
   const inputRef = useRef<HTMLInputElement>(null);
   const { mutate: addAttachment, isPending: isUploading } =
@@ -95,21 +97,25 @@ export const TaskAttachments = ({
         <h3 className="text-sm font-medium text-muted-foreground">
           Attachments
         </h3>
-        <input
-          ref={inputRef}
-          type="file"
-          className="hidden"
-          onChange={handleFileChange}
-        />
-        <Button
-          variant="outline"
-          size="sm"
-          disabled={isUploading}
-          onClick={() => inputRef.current?.click()}
-        >
-          <Paperclip className="size-4 mr-2" />
-          {isUploading ? "Uploading..." : "Add File"}
-        </Button>
+        {canEdit && (
+          <>
+            <input
+              ref={inputRef}
+              type="file"
+              className="hidden"
+              onChange={handleFileChange}
+            />
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={isUploading}
+              onClick={() => inputRef.current?.click()}
+            >
+              <Paperclip className="size-4 mr-2" />
+              {isUploading ? "Uploading..." : "Add File"}
+            </Button>
+          </>
+        )}
       </div>
 
       {attachments.length === 0 ? (
@@ -142,15 +148,17 @@ export const TaskAttachments = ({
                   >
                     <Download className="size-4" />
                   </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="size-8 text-muted-foreground hover:text-destructive"
-                    onClick={() => handleDelete(attachment._id)}
-                    title="Remove"
-                  >
-                    <Trash2 className="size-4" />
-                  </Button>
+                  {canEdit && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="size-8 text-muted-foreground hover:text-destructive"
+                      onClick={() => handleDelete(attachment._id)}
+                      title="Remove"
+                    >
+                      <Trash2 className="size-4" />
+                    </Button>
+                  )}
                 </div>
               </div>
             );

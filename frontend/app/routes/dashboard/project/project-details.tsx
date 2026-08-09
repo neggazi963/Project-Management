@@ -40,6 +40,20 @@ import {
   type DragEndEvent,
   type DragStartEvent,
 } from "@dnd-kit/core";
+import { useRoom } from "@/hooks/use-room";
+import { useProjectRole } from "@/hooks/use-project-role";
+import { ManageMembersDialog } from "@/components/project/manage-members-dialog";
+import { Users } from "lucide-react";
+import { useExportProject } from "@/hooks/use-export";
+import { Download } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { SaveAsTemplateDialog } from "@/components/project/save-as-template-dialog";
+import { LayoutTemplate } from "lucide-react";
 
 const STATUSES: TaskStatus[] = ["To Do", "In Progress", "Done"];
 
@@ -48,12 +62,16 @@ const ProjectDetails = () => {
     projectId: string;
     workspaceId: string;
   }>();
+  useRoom(projectId ? `project:${projectId}` : null);
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
   const [isCreateTask, setIsCreateTask] = useState(false);
   const [taskFilter, setTaskFilter] = useState<TaskStatus | "All">("All");
   const [isEditProject, setIsEditProject] = useState(false);
+  const [isManageMembers, setIsManageMembers] = useState(false);
+  const [isSaveTemplate, setIsSaveTemplate] = useState(false); // 👈 remonte ici
+  const [isExporting, setIsExporting] = useState(false); // 👈 remonte ici
   const [activeTask, setActiveTask] = useState<Task | null>(null);
 
   const { data, isLoading } = UseProjectQuery(projectId!) as {
@@ -65,12 +83,16 @@ const ProjectDetails = () => {
   };
 
   const { mutate: updateTaskStatus } = useUpdateTaskStatusMutation();
+  const { exportProject } = useExportProject(); // 👈 aussi avant le return si tu l'appelles ici
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: { distance: 5 },
     }),
   );
+
+  const { canEdit, canManage } = useProjectRole(data?.project);
+
   if (isLoading || !data)
     return (
       <div>
@@ -79,8 +101,18 @@ const ProjectDetails = () => {
     );
 
   const { project, tasks } = data;
-
   const projectProgress = getProjectProgress(tasks);
+
+  const handleExport = async (format: "csv" | "pdf") => {
+    setIsExporting(true);
+    try {
+      await exportProject(project._id, format, project.title);
+    } catch {
+      toast.error("Failed to export project");
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   const handleTaskClick = (taskId: string) => {
     navigate(
@@ -164,7 +196,8 @@ const ProjectDetails = () => {
             {project.startDate && (
               <span className="inline-flex items-center gap-1 text-xs text-muted-foreground bg-muted/50 rounded-full px-2.5 py-1">
                 <Calendar className="size-3" />
-                start date : {format(new Date(project.startDate), "MMM d, yyyy")}
+                start date :{" "}
+                {format(new Date(project.startDate), "MMM d, yyyy")}
               </span>
             )}
 
@@ -178,8 +211,21 @@ const ProjectDetails = () => {
             {project.createdAt && (
               <span className="inline-flex items-center gap-1 text-xs text-muted-foreground bg-muted/50 rounded-full px-2.5 py-1">
                 <Clock className="size-3" />
-                created at : {format(new Date(project.createdAt), "MMM d, yyyy")}
+                created at :{" "}
+                {format(new Date(project.createdAt), "MMM d, yyyy")}
               </span>
+            )}
+            {project.tags && (
+              <div className="flex flex-wrap gap-2 mt-2">
+                {project.tags.map((tag: string, index: number) => (
+                  <span
+                    key={index}
+                    className="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-600 transition-colors hover:bg-gray-200"
+                  >
+                    #{tag.trim()}
+                  </span>
+                ))}
+              </div>
             )}
           </div>
         </div>
@@ -197,14 +243,60 @@ const ProjectDetails = () => {
               {projectProgress}%
             </span>
           </div>
-          <Button variant="outline" onClick={() => setIsEditProject(true)}>
-            Edit
-          </Button>
-          <Button onClick={() => setIsCreateTask(true)}>Add Task</Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              render={
+                <Button variant="outline" disabled={isExporting}>
+                  <Download className="size-4 mr-2" />
+                  Export
+                </Button>
+              }
+            />
+            <DropdownMenuContent>
+              <DropdownMenuItem onClick={() => handleExport("pdf")}>
+                Export as PDF
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleExport("csv")}>
+                Export as CSV
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+          {canManage && (
+            <Button variant="outline" onClick={() => setIsEditProject(true)}>
+              Edit
+            </Button>
+          )}
+          {canManage && (
+            <Button variant="outline" onClick={() => setIsManageMembers(true)}>
+              <Users className="size-4 mr-2" />
+              Members
+            </Button>
+          )}
+          {canManage && (
+            <Button variant="outline" onClick={() => setIsSaveTemplate(true)}>
+              <LayoutTemplate className="size-4 mr-2" />
+              Save as Template
+            </Button>
+          )}
+          {canEdit && (
+            <Button onClick={() => setIsCreateTask(true)}>Add Task</Button>
+          )}
           <EditProjectDialog
             open={isEditProject}
             onOpenChange={setIsEditProject}
             project={project}
+          />
+          <ManageMembersDialog
+            open={isManageMembers}
+            onOpenChange={setIsManageMembers}
+            project={project}
+            workspaceId={workspaceId!}
+          />
+          <SaveAsTemplateDialog
+            open={isSaveTemplate}
+            onOpenChange={setIsSaveTemplate}
+            projectId={project._id}
+            defaultTitle={project.title}
           />
         </div>
       </div>
@@ -264,6 +356,7 @@ const ProjectDetails = () => {
                     title={status}
                     tasks={tasks.filter((task) => task.status === status)}
                     onTaskClick={handleTaskClick}
+                    canEdit={canEdit}
                   />
                 ))}
               </div>
@@ -285,6 +378,7 @@ const ProjectDetails = () => {
                 onTaskClick={handleTaskClick}
                 isFullWidth
                 draggable={false}
+                canEdit={canEdit}
               />
             </div>
           </TabsContent>
@@ -316,11 +410,11 @@ const ProjectDetails = () => {
           </TabsContent>
 
           <TabsContent value="notes" className="m-0">
-            <NotesTab projectId={projectId!} />
+            <NotesTab projectId={projectId!} canEdit={canEdit} />
           </TabsContent>
 
           <TabsContent value="roadmap" className="m-0">
-            <RoadmapTab projectId={projectId!} />
+            <RoadmapTab projectId={projectId!} canEdit={canEdit} />
           </TabsContent>
           <TabsContent value="gantt" className="m-0">
             <GanttTab tasks={tasks} />
@@ -348,6 +442,7 @@ interface TaskColumnProps {
   onTaskClick: (taskId: string) => void;
   isFullWidth?: boolean;
   draggable?: boolean;
+  canEdit?: boolean;
 }
 
 const TaskColumn = ({
@@ -357,8 +452,10 @@ const TaskColumn = ({
   onTaskClick,
   isFullWidth = false,
   draggable = true,
+  canEdit = false,
 }: TaskColumnProps) => {
   const { setNodeRef, isOver } = useDroppable({ id: status });
+  const canDrag = draggable && canEdit;
 
   return (
     <div
@@ -369,11 +466,11 @@ const TaskColumn = ({
       }
     >
       <div
-        ref={draggable ? setNodeRef : undefined}
+        ref={canDrag ? setNodeRef : undefined} // 👈 canDrag au lieu de draggable
         className={cn(
           "space-y-4 rounded-lg transition-colors",
           !isFullWidth ? "h-full" : "col-span-full mb-4",
-          draggable && isOver && "bg-muted/50 ring-2 ring-primary/30",
+          canDrag && isOver && "bg-muted/50 ring-2 ring-primary/30", // 👈 canDrag
         )}
       >
         {!isFullWidth && (
@@ -395,17 +492,19 @@ const TaskColumn = ({
             </div>
           ) : (
             tasks.map((task) =>
-              draggable ? (
+              canDrag ? (
                 <DraggableTaskCard
                   key={task._id}
                   task={task}
                   onClick={() => onTaskClick(task._id)}
+                  canEdit={canEdit}
                 />
               ) : (
                 <TaskCard
                   key={task._id}
                   task={task}
                   onClick={() => onTaskClick(task._id)}
+                  canEdit={canEdit}
                 />
               ),
             )
@@ -419,9 +518,11 @@ const TaskColumn = ({
 const DraggableTaskCard = ({
   task,
   onClick,
+  canEdit,
 }: {
   task: Task;
   onClick: () => void;
+  canEdit?: boolean;
 }) => {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: task._id,
@@ -437,12 +538,20 @@ const DraggableTaskCard = ({
         isDragging && "opacity-30",
       )}
     >
-      <TaskCard task={task} onClick={onClick} />
+      <TaskCard task={task} onClick={onClick} canEdit={canEdit} />
     </div>
   );
 };
 
-const TaskCard = ({ task, onClick }: { task: Task; onClick: () => void }) => {
+const TaskCard = ({
+  task,
+  onClick,
+  canEdit = false,
+}: {
+  task: Task;
+  onClick: () => void;
+  canEdit?: boolean;
+}) => {
   const queryClient = useQueryClient();
   const { mutate: updateTaskStatus, isPending } = useUpdateTaskStatusMutation();
 
@@ -484,47 +593,49 @@ const TaskCard = ({ task, onClick }: { task: Task; onClick: () => void }) => {
             {task.priority}
           </Badge>
 
-          <div className="flex gap-1">
-            {task.status !== "To Do" && (
-              <Button
-                variant={"ghost"}
-                size={"icon"}
-                className="size-6"
-                disabled={isPending}
-                onClick={(e) => handleStatusChange(e, "To Do")}
-                title="Mark as To Do"
-              >
-                <AlertCircle className={cn("size-4")} />
-                <span className="sr-only">Mark as To Do</span>
-              </Button>
-            )}
-            {task.status !== "In Progress" && (
-              <Button
-                variant={"ghost"}
-                size={"icon"}
-                className="size-6"
-                disabled={isPending}
-                onClick={(e) => handleStatusChange(e, "In Progress")}
-                title="Mark as In Progress"
-              >
-                <Clock className={cn("size-4")} />
-                <span className="sr-only">Mark as In Progress</span>
-              </Button>
-            )}
-            {task.status !== "Done" && (
-              <Button
-                variant={"ghost"}
-                size={"icon"}
-                className="size-6"
-                disabled={isPending}
-                onClick={(e) => handleStatusChange(e, "Done")}
-                title="Mark as Done"
-              >
-                <CheckCircle className={cn("size-4")} />
-                <span className="sr-only">Mark as Done</span>
-              </Button>
-            )}
-          </div>
+          {canEdit && ( // 👈 masque tout le bloc de boutons pour un viewer
+            <div className="flex gap-1">
+              {task.status !== "To Do" && (
+                <Button
+                  variant={"ghost"}
+                  size={"icon"}
+                  className="size-6"
+                  disabled={isPending}
+                  onClick={(e) => handleStatusChange(e, "To Do")}
+                  title="Mark as To Do"
+                >
+                  <AlertCircle className={cn("size-4")} />
+                  <span className="sr-only">Mark as To Do</span>
+                </Button>
+              )}
+              {task.status !== "In Progress" && (
+                <Button
+                  variant={"ghost"}
+                  size={"icon"}
+                  className="size-6"
+                  disabled={isPending}
+                  onClick={(e) => handleStatusChange(e, "In Progress")}
+                  title="Mark as In Progress"
+                >
+                  <Clock className={cn("size-4")} />
+                  <span className="sr-only">Mark as In Progress</span>
+                </Button>
+              )}
+              {task.status !== "Done" && (
+                <Button
+                  variant={"ghost"}
+                  size={"icon"}
+                  className="size-6"
+                  disabled={isPending}
+                  onClick={(e) => handleStatusChange(e, "Done")}
+                  title="Mark as Done"
+                >
+                  <CheckCircle className={cn("size-4")} />
+                  <span className="sr-only">Mark as Done</span>
+                </Button>
+              )}
+            </div>
+          )}
         </div>
       </CardHeader>
 

@@ -14,6 +14,8 @@ interface WorkspaceHeaderProps {
   }[];
   onCreateProject: () => void;
   onInviteMember: () => void;
+  canCreateProject?: boolean;
+  canInvite?: boolean;
 }
 
 export const WorkspaceHeader = ({
@@ -21,6 +23,8 @@ export const WorkspaceHeader = ({
   members,
   onCreateProject,
   onInviteMember,
+  canCreateProject = true,
+  canInvite = true,
 }: WorkspaceHeaderProps) => {
   return (
     <div className="space-y-8">
@@ -37,14 +41,18 @@ export const WorkspaceHeader = ({
           </div>
 
           <div className="flex items-center gap-3 justify-between md:justify-start mb-4 md:mb-0">
-            <Button variant={"outline"} onClick={onInviteMember}>
-              <UserPlus className="size-4 mr-2" />
-              Invite
-            </Button>
-            <Button onClick={onCreateProject}>
-              <Plus className="size-4 mr-2" />
-              Create Project
-            </Button>
+            {canInvite && ( 
+              <Button variant={"outline"} onClick={onInviteMember}>
+                <UserPlus className="size-4 mr-2" />
+                Invite
+              </Button>
+            )}
+            {canCreateProject && (
+              <Button onClick={onCreateProject}>
+                <Plus className="size-4 mr-2" />
+                Create Project
+              </Button>
+            )}
           </div>
         </div>
 

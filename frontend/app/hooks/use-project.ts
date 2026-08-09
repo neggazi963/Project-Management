@@ -158,3 +158,58 @@ export const useUpdateProjectMutation = () => {
     },
   });
 };
+
+export const useUpdateProjectMemberRoleMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (data: {
+      projectId: string;
+      memberId: string;
+      role: "manager" | "contributor" | "viewer";
+    }) =>
+      updateData(`/projects/${data.projectId}/members/${data.memberId}/role`, {
+        role: data.role,
+      }),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ["project", variables.projectId],
+      });
+    },
+  });
+};
+
+export const useRemoveProjectMemberMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (data: { projectId: string; memberId: string }) =>
+      deleteData(`/projects/${data.projectId}/members/${data.memberId}`),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ["project", variables.projectId],
+      });
+    },
+  });
+};
+
+export const useAddProjectMemberMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (data: {
+      projectId: string;
+      userId: string;
+      role: "manager" | "contributor" | "viewer";
+    }) =>
+      postData(`/projects/${data.projectId}/members`, {
+        userId: data.userId,
+        role: data.role,
+      }),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ["project", variables.projectId],
+      });
+    },
+  });
+};

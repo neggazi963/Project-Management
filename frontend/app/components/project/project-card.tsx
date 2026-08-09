@@ -14,6 +14,7 @@ import { Progress } from "../ui/progress";
 import { format } from "date-fns";
 import { CalendarDays, Trash2 } from "lucide-react";
 import { useDeleteProjectMutation } from "@/hooks/use-project";
+import { useProjectRole } from "@/hooks/use-project-role"; // 👈 ajoute
 import { toast } from "sonner";
 
 interface ProjectCardProps {
@@ -29,6 +30,7 @@ export const ProjectCard = ({
 }: ProjectCardProps) => {
   const { mutate: deleteProject, isPending: isDeleting } =
     useDeleteProjectMutation();
+  const { canManage } = useProjectRole(project); // 👈 ajoute
 
   const handleDeleteProject = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -57,17 +59,19 @@ export const ProjectCard = ({
   return (
     <Link to={`/workspaces/${workspaceId}/projects/${project._id}`}>
       <Card className="relative transition-all duration-300 hover:shadow-md hover:translate-y-1">
-        <Button
-          variant="ghost"
-          size="icon"
-          className="absolute top-3 right-3 size-7 text-muted-foreground hover:text-destructive"
-          disabled={isDeleting}
-          onClick={handleDeleteProject}
-          title="Delete Project"
-        >
-          <Trash2 className="size-4" />
-          <span className="sr-only">Delete Project</span>
-        </Button>
+        {canManage && ( // 👈 masque le bouton pour non-managers
+          <Button
+            variant="ghost"
+            size="icon"
+            className="absolute top-3 right-3 size-7 text-muted-foreground hover:text-destructive"
+            disabled={isDeleting}
+            onClick={handleDeleteProject}
+            title="Delete Project"
+          >
+            <Trash2 className="size-4" />
+            <span className="sr-only">Delete Project</span>
+          </Button>
+        )}
         {project.coverImage && (
           <div className="w-full h-24 overflow-hidden rounded-t-lg -mt-6 -mx-6 mb-2">
             <img

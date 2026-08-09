@@ -18,6 +18,7 @@ const notificationSchema = new Schema(
         "task_completed",
         "comment_added",
         "invitation_received",
+        "mentioned",
       ],
       required: true,
     },

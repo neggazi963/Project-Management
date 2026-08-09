@@ -3,6 +3,7 @@ import { StatsCard } from "@/components/dashboard/stat-card";
 import { StatisticsCharts } from "@/components/dashboard/statistics-charts";
 import { UpcomingDeadlines } from "@/components/dashboard/upcoming-deadlines";
 import { Loader } from "@/components/loader";
+import { useRoom } from "@/hooks/use-room";
 
 import { useGetWorkspaceStatsQuery } from "@/hooks/use-workspace";
 import type {
@@ -20,7 +21,7 @@ import { useSearchParams } from "react-router";
 const Dashboard = () => {
   const [searchParams] = useSearchParams();
   const workspaceId = searchParams.get("workspaceId");
-
+  useRoom(workspaceId ? `workspace:${workspaceId}` : null);
   const { data, isPending } = useGetWorkspaceStatsQuery(workspaceId ?? "") as {
     data:
       | {

@@ -13,9 +13,11 @@ import { toast } from "sonner";
 export const SubTasksDetails = ({
   subTasks,
   taskId,
+  canEdit = true,
 }: {
   subTasks: Subtask[];
   taskId: string;
+  canEdit?: boolean;
 }) => {
   const [newSubTask, setNewSubTask] = useState("");
   const { mutate: addSubTask, isPending } = useAddSubTaskMutation();
@@ -71,7 +73,7 @@ export const SubTasksDetails = ({
                 onCheckedChange={(checked) =>
                   handleToggleTask(subTask._id, !!checked)
                 }
-                disabled={isUpdating}
+                disabled={isUpdating || !canEdit}
               />
 
               <label
@@ -89,22 +91,24 @@ export const SubTasksDetails = ({
         )}
       </div>
 
-      <div className="flex ">
-        <Input
-          placeholder="Add a sub task"
-          value={newSubTask}
-          onChange={(e) => setNewSubTask(e.target.value)}
-          className="mr-1"
-          disabled={isPending}
-        />
+      {canEdit && (
+        <div className="flex ">
+          <Input
+            placeholder="Add a sub task"
+            value={newSubTask}
+            onChange={(e) => setNewSubTask(e.target.value)}
+            className="mr-1"
+            disabled={isPending}
+          />
 
-        <Button
-          onClick={handleAddSubTask}
-          disabled={isPending || newSubTask.length === 0}
-        >
-          Add
-        </Button>
-      </div>
+          <Button
+            onClick={handleAddSubTask}
+            disabled={isPending || newSubTask.length === 0}
+          >
+            Add
+          </Button>
+        </div>
+      )}
     </div>
   );
 };

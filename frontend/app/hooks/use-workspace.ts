@@ -1,6 +1,6 @@
 import type { WorkspaceForm } from "@/components/workspace/create-workspace";
 import type { Workspace } from "@/types"; // Ajustez le chemin vers votre index.ts
-import { fetchData, postData, deleteData } from "@/lib/fetch-util";
+import { fetchData, postData, deleteData, updateData } from "@/lib/fetch-util";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useWorkspaceStore } from "@/store/use-workspace-store";
 
@@ -81,8 +81,13 @@ export const useAcceptInviteByTokenMutation = () => {
 
 export const useAcceptGenerateInviteMutation = () => {
   return useMutation({
-    mutationFn: (workspaceId: string) =>
-      postData(`/workspaces/${workspaceId}/accept-generate-invite`, {}),
+    mutationFn: (data: { workspaceId: string; role?: string }) =>
+      postData(
+        `/workspaces/${data.workspaceId}/accept-generate-invite${
+          data.role ? `?role=${data.role}` : ""
+        }`,
+        {},
+      ),
   });
 };
 
@@ -92,6 +97,20 @@ export const useDeleteWorkspaceMutation = () => {
   return useMutation({
     mutationFn: (data: { workspaceId: string }) =>
       deleteData(`/workspaces/${data.workspaceId}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["workspaces"] });
+    },
+  });
+};
+
+export const useUpdateWorkspaceMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (data: {
+      workspaceId: string;
+      workspaceData: Partial<WorkspaceForm>;
+    }) => updateData(`/workspaces/${data.workspaceId}`, data.workspaceData),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["workspaces"] });
     },

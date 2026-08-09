@@ -13,7 +13,14 @@ import {
   removeProjectCover,
   updateProjectCoverPosition,
   updateProject,
+  updateProjectMemberRole,
+  removeProjectMember,
+  addProjectMember,
 } from "../controllers/project.controller.js";
+import {
+  exportProjectCSV,
+  exportProjectPDF,
+} from "../controllers/export.controller.js";
 import { z } from "zod";
 import upload from "../middleware/upload.middleware.js";
 
@@ -29,6 +36,16 @@ router.post(
     body: projectSchema,
   }),
   createProject,
+);
+
+router.post(
+  "/:projectId/members",
+  authMiddleware,
+  validateRequest({
+    params: z.object({ projectId: z.string() }),
+    body: z.object({ userId: z.string(), role: z.string() }),
+  }),
+  addProjectMember,
 );
 
 router.get(
@@ -57,6 +74,24 @@ router.get(
   authMiddleware,
   validateRequest({ params: z.object({ projectId: z.string() }) }),
   getProjectRoadmap,
+);
+
+router.put(
+  "/:projectId/members/:memberId/role",
+  authMiddleware,
+  validateRequest({
+    params: z.object({ projectId: z.string(), memberId: z.string() }),
+    body: z.object({ role: z.string() }),
+  }),
+  updateProjectMemberRole,
+);
+router.delete(
+  "/:projectId/members/:memberId",
+  authMiddleware,
+  validateRequest({
+    params: z.object({ projectId: z.string(), memberId: z.string() }),
+  }),
+  removeProjectMember,
 );
 
 router.put(
@@ -94,6 +129,19 @@ router.delete(
   removeProjectCover,
 );
 
+router.get(
+  "/:projectId/export/csv",
+  authMiddleware,
+  validateRequest({ params: z.object({ projectId: z.string() }) }),
+  exportProjectCSV,
+);
+
+router.get(
+  "/:projectId/export/pdf",
+  authMiddleware,
+  validateRequest({ params: z.object({ projectId: z.string() }) }),
+  exportProjectPDF,
+);
 router.put(
   "/:projectId/cover/position",
   authMiddleware,

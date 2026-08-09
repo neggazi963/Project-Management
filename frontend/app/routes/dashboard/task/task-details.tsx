@@ -11,10 +11,12 @@ import { TaskTitle } from "@/components/task/task-title";
 import { Watchers } from "@/components/task/watchers";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
 import { TaskAttachments } from "@/components/task/task-attachments";
 import { TaskTimeTracking } from "@/components/task/task-time-tracking";
 import { TaskDependenciesSelector } from "@/components/task/task-dependencies-selector";
-
+import { useRoom } from "@/hooks/use-room";
 import {
   useAchievedTaskMutation,
   useDeleteTaskMutation,
@@ -23,10 +25,11 @@ import {
 } from "@/hooks/use-task";
 import { useAuth } from "@/provider/auth-context";
 import type { Project, Task } from "@/types";
-import { format, formatDistanceToNow } from "date-fns";
-import { Eye, EyeOff } from "lucide-react";
+import { formatDistanceToNow } from "date-fns";
+import { Archive, ArchiveRestore, Eye, EyeOff, Trash2 } from "lucide-react";
 import { useNavigate, useParams } from "react-router";
 import { toast } from "sonner";
+import { useProjectRole } from "@/hooks/use-project-role";
 
 const TaskDetails = () => {
   const { mutate: deleteTask, isPending: isDeleting } = useDeleteTaskMutation();
@@ -36,6 +39,7 @@ const TaskDetails = () => {
     projectId: string;
     workspaceId: string;
   }>();
+  useRoom(taskId ? `task:${taskId}` : null);
   const navigate = useNavigate();
 
   const { data, isLoading } = useTaskByIdQuery(taskId!) as {
@@ -51,7 +55,7 @@ const TaskDetails = () => {
 
   if (isLoading) {
     return (
-      <div>
+      <div className="flex h-[80vh] w-full items-center justify-center">
         <Loader />
       </div>
     );
@@ -59,28 +63,25 @@ const TaskDetails = () => {
 
   if (!data) {
     return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="text-2xl font-bold">Task not found</div>
+      <div className="flex h-[80vh] flex-col items-center justify-center gap-4">
+        <h2 className="text-2xl font-bold tracking-tight">Task not found</h2>
+        <BackButton />
       </div>
     );
   }
 
   const { task, project } = data;
+  const { canEdit, canManage } = useProjectRole(project);
   const isUserWatching = task?.watchers?.some(
     (watcher) => watcher._id.toString() === user?._id.toString(),
   );
-
-  const goBack = () => navigate(-1);
-
-  const members = task?.assignees || [];
 
   const handleWatchTask = () => {
     watchTask(
       { taskId: task._id },
       {
         onSuccess: () => {
-          toast.success("Task watched");
-          navigate(`/workspaces/${workspaceId}/projects/${projectId}`);
+          toast.success("Task watch status updated");
         },
         onError: () => {
           toast.error("Failed to watch task");
@@ -94,24 +95,10 @@ const TaskDetails = () => {
       { taskId: task._id },
       {
         onSuccess: () => {
-          toast.success("Task achieved");
+          toast.success(task.isArchived ? "Task unarchived" : "Task archived");
         },
         onError: () => {
-          toast.error("Failed to achieve task");
-        },
-      },
-    );
-  };
-
-  const handleUnachievedTask = () => {
-    achievedTask(
-      { taskId: task._id },
-      {
-        onSuccess: () => {
-          toast.success("Task unachieved");
-        },
-        onError: () => {
-          toast.error("Failed to unachieve task");
+          toast.error("Failed to update archive status");
         },
       },
     );
@@ -135,140 +122,236 @@ const TaskDetails = () => {
   };
 
   return (
-    <div className="container mx-auto p-0 py-4 md:px-4">
-      <div className="flex flex-col md:flex-row items-center justify-between mb-6">
-        <div className="flex flex-col md:flex-row md:items-center">
+    <div className="container mx-auto max-w-7xl px-4 py-6 space-y-6">
+      {/* Top Bar / Header */}
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between border-b pb-4">
+        <div className="flex items-center gap-3">
           <BackButton />
-
-          <h1 className="text-xl md:text-2xl font-bold">{task.title}</h1>
-
-          {task.isArchived && (
-            <Badge className="ml-2" variant={"outline"}>
-              Archived
-            </Badge>
-          )}
+          <Separator orientation="vertical" className="h-6" />
+          <span className="text-sm font-medium text-muted-foreground">
+            {project?.title || "Project"}
+          </span>
+          <span className="text-sm text-muted-foreground">/</span>
+          <span className="text-sm font-semibold text-foreground">
+            {task.title}
+          </span>
         </div>
 
-        <div className="flex space-x-2 mt-4 md:mt-0">
-          <Button
-            variant={"outline"}
-            size="sm"
-            onClick={handleWatchTask}
-            className="w-fit"
-            disabled={isWatching}
-          >
-            {isUserWatching ? (
-              <>
-                <EyeOff className="mr-2 size-4" />
-                Unwatch
-              </>
-            ) : (
-              <>
-                <Eye className="mr-2 size-4" />
-                Watch
-              </>
-            )}
-          </Button>
-
-          <Button
-            variant={"outline"}
-            size="sm"
-            onClick={handleAchievedTask}
-            className="w-fit"
-            disabled={isAchieved}
-          >
-            {task.isArchived ? "Unarchive" : "Archive"}
-          </Button>
+        {/* Action Buttons */}
+        <div className="flex items-center gap-2">
+          {canEdit && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleWatchTask}
+              disabled={isWatching}
+              className="gap-2"
+            >
+              {isUserWatching ? (
+                <>
+                  <EyeOff className="size-4" />
+                  Unwatch
+                </>
+              ) : (
+                <>
+                  <Eye className="size-4" />
+                  Watch
+                </>
+              )}
+            </Button>
+          )}
+          {canEdit && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleAchievedTask}
+              disabled={isAchieved}
+              className="gap-2"
+            >
+              {task.isArchived ? (
+                <>
+                  <ArchiveRestore className="size-4" />
+                  Unarchive
+                </>
+              ) : (
+                <>
+                  <Archive className="size-4" />
+                  Archive
+                </>
+              )}
+            </Button>
+          )}
+          {canManage && (
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={handleDeleteTask}
+              disabled={isDeleting}
+              className="gap-2"
+            >
+              <Trash2 className="size-4" />
+              Delete
+            </Button>
+          )}
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
-        <div className="lg:col-span-2">
-          <div className="bg-card rounded-lg p-6 shadow-sm mb-6">
-            <div className="flex flex-col md:flex-row justify-between items-start mb-4">
-              <div>
-                <Badge
-                  variant={
-                    task.priority === "High"
-                      ? "destructive"
-                      : task.priority === "Medium"
-                        ? "default"
-                        : "outline"
-                  }
-                  className="mb-2 capitalize"
-                >
-                  {task.priority} Priority
-                </Badge>
+      {/* Main Grid Content */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+        {/* Left Column (Main Details & Comments) */}
+        <div className="lg:col-span-2 space-y-6">
+          <Card className="border shadow-sm">
+            <CardContent className="p-6 space-y-6">
+              {/* Header Info */}
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  {task.isArchived && (
+                    <Badge
+                      variant="outline"
+                      className="border-amber-500 text-amber-500"
+                    >
+                      Archived
+                    </Badge>
+                  )}
+                  <span className="text-xs text-muted-foreground">
+                    Created{" "}
+                    {formatDistanceToNow(new Date(task.createdAt), {
+                      addSuffix: true,
+                    })}
+                  </span>
+                </div>
 
                 <TaskTitle title={task.title} taskId={task._id} />
+              </div>
 
-                <div className="text-sm md:text-base text-muted-foreground">
-                  Created at:{" "}
-                  {formatDistanceToNow(new Date(task.createdAt), {
-                    addSuffix: true,
-                  })}
+              <Separator />
+
+              {/* Description */}
+              <div className="space-y-2">
+                <h3 className="text-sm font-semibold text-foreground">
+                  Description
+                </h3>
+                <div className="rounded-md bg-muted/30 p-3">
+                  <TaskDescription
+                    description={task.description || ""}
+                    taskId={task._id}
+                  />
                 </div>
               </div>
 
-              <div className="flex items-center gap-2 mt-4 md:mt-0">
-                <TaskStatusSelector status={task.status} taskId={task._id} />
-
-                <Button
-                  variant={"destructive"}
-                  size="sm"
-                  onClick={handleDeleteTask}
-                  className="hidden md:block"
-                >
-                  Delete Task
-                </Button>
+              {/* Attachments */}
+              <div className="space-y-2">
+                <TaskAttachments
+                  taskId={task._id}
+                  attachments={task.attachments || []}
+                  canEdit={canEdit}
+                />
               </div>
-            </div>
 
-            <div className="mb-6">
-              <h3 className="text-sm font-medium text-muted-foreground mb-0">
-                Description
-              </h3>
+              {/* Time Tracking */}
+              <div className="space-y-2">
+                <TaskTimeTracking
+                  taskId={task._id}
+                  timeEntries={task.timeEntries || []}
+                  canEdit={canEdit}
+                />
+              </div>
 
-              <TaskDescription
-                description={task.description || ""}
-                taskId={task._id}
-              />
-            </div>
-            <TaskAttachments
-              taskId={task._id}
-              attachments={task.attachments || []}
-            />
-            <TaskTimeTracking
-              taskId={task._id}
-              timeEntries={task.timeEntries || []}
-            />
+              <Separator />
 
-            <TaskAssigneesSelector
-              task={task}
-              assignees={task.assignees}
-              projectMembers={project.members as any}
-            />
-            {/* <TaskDependenciesSelector
-              taskId={task._id}
-              dependencies={task.dependencies || []}
-              allProjectTasks={project.tasks || []}
-            /> */}
+              {/* Subtasks */}
+              <div className="space-y-2">
+                <SubTasksDetails
+                  subTasks={task.subtasks || []}
+                  taskId={task._id}
+                  canEdit={canEdit}
+                />
+              </div>
+            </CardContent>
+          </Card>
 
-            <TaskPrioritySelector priority={task.priority} taskId={task._id} />
-
-            <SubTasksDetails subTasks={task.subtasks || []} taskId={task._id} />
-          </div>
-
-          <CommentSection taskId={task._id} members={project.members as any} />
+          {/* Comment Section */}
+          <CommentSection
+            taskId={task._id}
+            members={project.members as any}
+            canEdit={canEdit}
+          />
         </div>
 
-        {/* right side */}
-        <div className="space-y-6 lg:sticky lg:top-20">
+        {/* Right Sidebar (Metadata & Status Controls) */}
+        <div className="space-y-6 lg:sticky lg:top-6">
+          {/* Attributes Panel */}
+          <Card className="border shadow-sm">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base font-semibold">
+                Attributes
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center justify-between gap-4">
+                <span className="text-sm font-medium text-muted-foreground">
+                  Status
+                </span>
+                <TaskStatusSelector
+                  status={task.status}
+                  taskId={task._id}
+                  canEdit={canEdit}
+                />
+              </div>
+
+              <Separator />
+
+              <div className="flex items-center justify-between gap-4">
+                <span className="text-sm font-medium text-muted-foreground">
+                  Priority
+                </span>
+                <TaskPrioritySelector
+                  priority={task.priority}
+                  taskId={task._id}
+                  canEdit={canEdit}
+                />
+              </div>
+
+              <Separator />
+
+              <div className="flex flex-col gap-2">
+                <TaskAssigneesSelector
+                  task={task}
+                  assignees={task.assignees}
+                  projectMembers={project.members as any}
+                  canEdit={canEdit}
+                />
+              </div>
+
+              {/* Optionnel: Dépendances */}
+              {/* <Separator />
+              <div className="flex flex-col gap-2">
+                <span className="text-sm font-medium text-muted-foreground">Dependencies</span>
+                <TaskDependenciesSelector
+                  taskId={task._id}
+                  dependencies={task.dependencies || []}
+                  allProjectTasks={project.tasks || []}
+                />
+              </div> */}
+            </CardContent>
+          </Card>
+
+          {/* Watchers Section */}
           <Watchers watchers={task.watchers || []} />
 
-          <div className="max-h-105 overflow-y-auto rounded-lg border">
-            <TaskActivity resourceId={task._id} />
-          </div>
+          {/* Activity Section */}
+          <Card className="border shadow-sm">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base font-semibold">
+                Activity
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-0">
+              <div className="max-h-80 overflow-y-auto px-6 pb-6">
+                <TaskActivity resourceId={task._id} />
+              </div>
+            </CardContent>
+          </Card>
         </div>
       </div>
     </div>

@@ -24,6 +24,7 @@ const WorkspaceInvite = () => {
   const [searchParams] = useSearchParams();
 
   const token = searchParams.get("tk");
+  const role = searchParams.get("role"); // 👈 lecture du rôle depuis l'URL
 
   const navigate = useNavigate();
 
@@ -60,16 +61,19 @@ const WorkspaceInvite = () => {
         },
       });
     } else {
-      acceptGenerateInvite(workspaceId, {
-        onSuccess: () => {
-          toast.success("Invitation accepted");
-          navigate(`/workspaces/${workspaceId}`);
+      acceptGenerateInvite(
+        { workspaceId, role: role || undefined }, // 👈 transmet le rôle
+        {
+          onSuccess: () => {
+            toast.success("Invitation accepted");
+            navigate(`/workspaces/${workspaceId}`);
+          },
+          onError: (error: any) => {
+            toast.error(error.response.data.message);
+            console.log(error);
+          },
         },
-        onError: (error: any) => {
-          toast.error(error.response.data.message);
-          console.log(error);
-        },
-      });
+      );
     }
   };
 
@@ -105,6 +109,7 @@ const WorkspaceInvite = () => {
       </div>
     );
   }
+
   return (
     <div className="flex items-center justify-center h-screen">
       <Card className="max-w-md w-full">
@@ -115,7 +120,14 @@ const WorkspaceInvite = () => {
           </div>
           <CardDescription>
             You've been invited to join the "<strong>{workspace.name}</strong>"
-            workspace.
+            workspace
+            {role && ( // 👈 affiche le rôle qui sera attribué
+              <>
+                {" "}
+                as <strong className="capitalize">{role}</strong>
+              </>
+            )}
+            .
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">

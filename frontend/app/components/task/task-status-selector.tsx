@@ -12,14 +12,16 @@ import { toast } from "sonner";
 export const TaskStatusSelector = ({
   status,
   taskId,
+  canEdit = true,
 }: {
   status: TaskStatus;
   taskId: string;
+  canEdit?: boolean;
 }) => {
   const { mutate, isPending } = useUpdateTaskStatusMutation();
 
   const handleStatusChange = (value: string | null) => {
-    if (!value) return; // ignore la désélection
+    if (!value) return;
 
     mutate(
       { taskId, status: value as TaskStatus },
@@ -39,8 +41,9 @@ export const TaskStatusSelector = ({
     <Select
       value={status || ""}
       onValueChange={(value) => handleStatusChange(value)}
+      disabled={!canEdit}
     >
-      <SelectTrigger className="w-45" disabled={isPending}>
+      <SelectTrigger className="w-45" disabled={isPending || !canEdit}>
         <SelectValue placeholder="Status" />
       </SelectTrigger>
 

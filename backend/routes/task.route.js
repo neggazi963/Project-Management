@@ -234,6 +234,27 @@ router.get(
   getCommentsByTaskId,
 );
 
+router.post(
+  "/:taskId/comments", 
+  authMiddleware,
+  validateRequest({
+    params: z.object({ taskId: z.string() }),
+    body: z.object({
+      text: z.string(),
+      mentions: z
+        .array(
+          z.object({
+            user: z.string(),
+            offset: z.number(),
+            length: z.number(),
+          }),
+        )
+        .optional(),
+    }),
+  }),
+  addComment,
+);
+
 router.delete(
   "/:taskId",
   authMiddleware,

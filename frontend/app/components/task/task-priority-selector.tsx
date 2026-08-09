@@ -1,4 +1,4 @@
-import type { TaskPriority, TaskStatus } from "@/types";
+import type { TaskPriority } from "@/types";
 import {
   Select,
   SelectContent,
@@ -6,18 +6,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../ui/select";
-import {
-  useUpdateTaskPriorityMutation,
-  useUpdateTaskStatusMutation,
-} from "@/hooks/use-task";
+import { useUpdateTaskPriorityMutation } from "@/hooks/use-task";
 import { toast } from "sonner";
 
 export const TaskPrioritySelector = ({
   priority,
   taskId,
+  canEdit = true,
 }: {
   priority: TaskPriority;
   taskId: string;
+  canEdit?: boolean;
 }) => {
   const { mutate, isPending } = useUpdateTaskPriorityMutation();
 
@@ -44,8 +43,9 @@ export const TaskPrioritySelector = ({
     <Select
       value={priority || ""}
       onValueChange={(value) => handleStatusChange(value)}
+      disabled={!canEdit}
     >
-      <SelectTrigger className="w-45" disabled={isPending}>
+      <SelectTrigger className="w-45" disabled={isPending || !canEdit}>
         <SelectValue placeholder="Priority" />
       </SelectTrigger>
 

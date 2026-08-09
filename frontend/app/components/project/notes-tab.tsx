@@ -15,8 +15,6 @@ import { PlusCircle, Trash2, Pencil, ArrowLeft } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import type { Note } from "@/types";
 
-
-
 const YOUTUBE_REGEX =
   /^(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]{11})\S*$/;
 
@@ -26,8 +24,6 @@ const getYoutubeEmbedUrl = (url: string) => {
   return `https://www.youtube.com/embed/${match[1]}`;
 };
 
-// Splits note content into markdown blocks and standalone YouTube link blocks,
-// rendering the latter as embedded video players.
 const NoteContentView = ({ content }: { content: string }) => {
   const lines = content.split("\n");
   const blocks: { type: "md" | "video"; content: string }[] = [];
@@ -82,9 +78,10 @@ type ViewState =
 
 interface NotesTabProps {
   projectId: string;
+  canEdit?: boolean; // 👈 nouvelle prop
 }
 
-export const NotesTab = ({ projectId }: NotesTabProps) => {
+export const NotesTab = ({ projectId, canEdit = false }: NotesTabProps) => {
   const { data: notes, isLoading } = useGetProjectNotesQuery(projectId) as {
     data: Note[] | undefined;
     isLoading: boolean;
@@ -221,23 +218,25 @@ export const NotesTab = ({ projectId }: NotesTabProps) => {
           >
             <ArrowLeft className="size-4 mr-2" /> Back to notes
           </Button>
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => startEditNote(note)}
-            >
-              <Pencil className="size-4 mr-2" /> Edit
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              className="text-destructive hover:text-destructive"
-              onClick={() => handleDelete(note._id)}
-            >
-              <Trash2 className="size-4 mr-2" /> Delete
-            </Button>
-          </div>
+          {canEdit && ( // 👈 masque Edit/Delete pour un viewer
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => startEditNote(note)}
+              >
+                <Pencil className="size-4 mr-2" /> Edit
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="text-destructive hover:text-destructive"
+                onClick={() => handleDelete(note._id)}
+              >
+                <Trash2 className="size-4 mr-2" /> Delete
+              </Button>
+            </div>
+          )}
         </div>
 
         <div className="bg-card rounded-lg p-6 border">
@@ -260,9 +259,11 @@ export const NotesTab = ({ projectId }: NotesTabProps) => {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-medium">Notes</h3>
-        <Button onClick={startNewNote}>
-          <PlusCircle className="size-4 mr-2" /> New Note
-        </Button>
+        {canEdit && ( // 👈 masque "New Note" pour un viewer
+          <Button onClick={startNewNote}>
+            <PlusCircle className="size-4 mr-2" /> New Note
+          </Button>
+        )}
       </div>
 
       {!notes || notes.length === 0 ? (
@@ -278,19 +279,23 @@ export const NotesTab = ({ projectId }: NotesTabProps) => {
               className="relative cursor-pointer hover:shadow-md transition-all"
               onClick={() => setView({ mode: "view", note })}
             >
-              <Button
-                variant="ghost"
-                size="icon"
-                className="absolute top-2 right-2 size-7 text-muted-foreground hover:text-destructive"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleDelete(note._id);
-                }}
-              >
-                <Trash2 className="size-4" />
-              </Button>
+              {canEdit && ( // 👈 masque le bouton delete sur chaque carte
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="absolute top-2 right-2 size-7 text-muted-foreground hover:text-destructive"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDelete(note._id);
+                  }}
+                >
+                  <Trash2 className="size-4" />
+                </Button>
+              )}
               <CardHeader>
-                <CardTitle className="pr-8 line-clamp-1">
+                <CardTitle
+                  className={canEdit ? "pr-8 line-clamp-1" : "line-clamp-1"}
+                >
                   {note.title}
                 </CardTitle>
               </CardHeader>

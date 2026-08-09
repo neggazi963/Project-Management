@@ -8,9 +8,11 @@ import { Textarea } from "../ui/textarea";
 export const TaskDescription = ({
   description,
   taskId,
+  canEdit = true,
 }: {
   description: string;
   taskId: string;
+  canEdit?: boolean;
 }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [newDescription, setNewDescription] = useState(description);
@@ -32,33 +34,40 @@ export const TaskDescription = ({
     );
   };
 
-  return (
-    <div className="flex items-center gap-2">
-      {isEditing ? (
+  if (isEditing && canEdit) {
+    return (
+      <div className="flex flex-col gap-2 w-full">
         <Textarea
-          className="w-full min-w-3xl"
+          className="w-full"
           value={newDescription}
           onChange={(e) => setNewDescription(e.target.value)}
           disabled={isPending}
+          autoFocus
         />
-      ) : (
-        <div className="text-sm md:text-base text-pretty flex-1 text-muted-foreground">
-          {description}
-        </div>
-      )}
-
-      {isEditing ? (
         <Button
-          className="py-0"
+          className="py-0 self-end"
           size="sm"
           onClick={updateDescription}
           disabled={isPending}
         >
           Save
         </Button>
-      ) : (
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex items-start gap-2 w-full">
+      <div className="text-sm md:text-base text-pretty flex-1 text-muted-foreground">
+        {description || (
+          <span className="italic text-muted-foreground/60">
+            No description
+          </span>
+        )}
+      </div>
+      {canEdit && ( 
         <Edit
-          className="size-3 cursor-pointer"
+          className="size-3 cursor-pointer shrink-0 mt-1"
           onClick={() => setIsEditing(true)}
         />
       )}

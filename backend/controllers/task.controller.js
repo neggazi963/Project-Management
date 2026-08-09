@@ -1,11 +1,13 @@
 import { recordActivity } from "../libs/index.js";
 import { notify } from "../libs/notify.js";
+import { emitInvalidate } from "../libs/socket.js";
 import cloudinary from "../libs/cloudinary.js";
 import ActivityLog from "../models/activity.model.js";
 import Comment from "../models/comment.model.js";
 import Project from "../models/project.model.js";
 import Task from "../models/task.model.js";
 import Workspace from "../models/workspace.model.js";
+import { hasProjectPermission } from "../libs/permissions.js";
 
 const createTask = async (req, res) => {
   try {
@@ -29,13 +31,15 @@ const createTask = async (req, res) => {
       });
     }
 
-    const isMember = workspace.members.some(
-      (member) => member.user.toString() === req.user._id.toString(),
+    const { allowed } = hasProjectPermission(
+      project,
+      req.user._id,
+      "contributor",
     );
 
-    if (!isMember) {
+    if (!allowed) {
       return res.status(403).json({
-        message: "You are not a member of this workspace",
+        message: "You need at least contributor access to create tasks",
       });
     }
 
@@ -63,6 +67,13 @@ const createTask = async (req, res) => {
       });
     }
 
+    emitInvalidate(`project:${projectId}`, ["project", projectId]);
+    emitInvalidate(`workspace:${workspace._id}`, [
+      "workspace",
+      workspace._id.toString(),
+      "stats",
+    ]);
+
     res.status(201).json(newTask);
   } catch (error) {
     console.log(error);
@@ -80,7 +91,7 @@ const getTaskById = async (req, res) => {
       .populate("assignees", "name profilePicture")
       .populate("watchers", "name profilePicture")
       .populate("timeEntries.user", "name profilePicture")
-      .populate("dependencies", "title status"); 
+      .populate("dependencies", "title status");
 
     if (!task) {
       return res.status(404).json({
@@ -99,7 +110,6 @@ const getTaskById = async (req, res) => {
       });
     }
 
-    
     const allProjectTasks = await Task.find({ project: task.project }).select(
       "_id title status",
     );
@@ -140,13 +150,15 @@ const updateTaskTitle = async (req, res) => {
       });
     }
 
-    const isMember = project.members.some(
-      (member) => member.user.toString() === req.user._id.toString(),
+    const { allowed } = hasProjectPermission(
+      project,
+      req.user._id,
+      "contributor",
     );
 
-    if (!isMember) {
+    if (!allowed) {
       return res.status(403).json({
-        message: "You are not a member of this project",
+        message: "You need at least contributor access to do this",
       });
     }
 
@@ -155,10 +167,16 @@ const updateTaskTitle = async (req, res) => {
     task.title = title;
     await task.save();
 
-    // record activity
     await recordActivity(req.user._id, "updated_task", "Task", taskId, {
       description: `updated task title from ${oldTitle} to ${title}`,
     });
+
+    emitInvalidate(`task:${taskId}`, ["task", taskId]);
+    emitInvalidate(`task:${taskId}`, ["task-activity", taskId]);
+    emitInvalidate(`project:${project._id}`, [
+      "project",
+      project._id.toString(),
+    ]);
 
     res.status(200).json(task);
   } catch (error) {
@@ -168,6 +186,7 @@ const updateTaskTitle = async (req, res) => {
     });
   }
 };
+
 const updateTaskDescription = async (req, res) => {
   try {
     const { taskId } = req.params;
@@ -189,13 +208,15 @@ const updateTaskDescription = async (req, res) => {
       });
     }
 
-    const isMember = project.members.some(
-      (member) => member.user.toString() === req.user._id.toString(),
+    const { allowed } = hasProjectPermission(
+      project,
+      req.user._id,
+      "contributor",
     );
 
-    if (!isMember) {
+    if (!allowed) {
       return res.status(403).json({
-        message: "You are not a member of this project",
+        message: "You need at least contributor access to do this",
       });
     }
 
@@ -208,10 +229,12 @@ const updateTaskDescription = async (req, res) => {
     task.description = description;
     await task.save();
 
-    // record activity
     await recordActivity(req.user._id, "updated_task", "Task", taskId, {
       description: `updated task description from ${oldDescription} to ${newDescription}`,
     });
+
+    emitInvalidate(`task:${taskId}`, ["task", taskId]);
+    emitInvalidate(`task:${taskId}`, ["task-activity", taskId]);
 
     res.status(200).json(task);
   } catch (error) {
@@ -243,13 +266,15 @@ const updateTaskStatus = async (req, res) => {
       });
     }
 
-    const isMember = project.members.some(
-      (member) => member.user.toString() === req.user._id.toString(),
+    const { allowed } = hasProjectPermission(
+      project,
+      req.user._id,
+      "contributor",
     );
 
-    if (!isMember) {
+    if (!allowed) {
       return res.status(403).json({
-        message: "You are not a member of this project",
+        message: "You need at least contributor access to do this",
       });
     }
 
@@ -275,10 +300,21 @@ const updateTaskStatus = async (req, res) => {
       }
     }
 
-    // record activity
     await recordActivity(req.user._id, "updated_task", "Task", taskId, {
       description: `updated task status from ${oldStatus} to ${status}`,
     });
+
+    emitInvalidate(`task:${taskId}`, ["task", taskId]);
+    emitInvalidate(`task:${taskId}`, ["task-activity", taskId]);
+    emitInvalidate(`project:${project._id}`, [
+      "project",
+      project._id.toString(),
+    ]);
+    emitInvalidate(`workspace:${project.workspace}`, [
+      "workspace",
+      project.workspace.toString(),
+      "stats",
+    ]);
 
     res.status(200).json(task);
   } catch (error) {
@@ -288,6 +324,7 @@ const updateTaskStatus = async (req, res) => {
     });
   }
 };
+
 const updateTaskAssignees = async (req, res) => {
   try {
     const { taskId } = req.params;
@@ -309,13 +346,15 @@ const updateTaskAssignees = async (req, res) => {
       });
     }
 
-    const isMember = project.members.some(
-      (member) => member.user.toString() === req.user._id.toString(),
+    const { allowed } = hasProjectPermission(
+      project,
+      req.user._id,
+      "contributor",
     );
 
-    if (!isMember) {
+    if (!allowed) {
       return res.status(403).json({
-        message: "You are not a member of this project",
+        message: "You need at least contributor access to do this",
       });
     }
 
@@ -324,10 +363,16 @@ const updateTaskAssignees = async (req, res) => {
     task.assignees = assignees;
     await task.save();
 
-    // record activity
     await recordActivity(req.user._id, "updated_task", "Task", taskId, {
       description: `updated task assignees from ${oldAssignees.length} to ${assignees.length}`,
     });
+
+    emitInvalidate(`task:${taskId}`, ["task", taskId]);
+    emitInvalidate(`task:${taskId}`, ["task-activity", taskId]);
+    emitInvalidate(`project:${project._id}`, [
+      "project",
+      project._id.toString(),
+    ]);
 
     res.status(200).json(task);
   } catch (error) {
@@ -337,6 +382,7 @@ const updateTaskAssignees = async (req, res) => {
     });
   }
 };
+
 const updateTaskPriority = async (req, res) => {
   try {
     const { taskId } = req.params;
@@ -358,13 +404,15 @@ const updateTaskPriority = async (req, res) => {
       });
     }
 
-    const isMember = project.members.some(
-      (member) => member.user.toString() === req.user._id.toString(),
+    const { allowed } = hasProjectPermission(
+      project,
+      req.user._id,
+      "contributor",
     );
 
-    if (!isMember) {
+    if (!allowed) {
       return res.status(403).json({
-        message: "You are not a member of this project",
+        message: "You need at least contributor access to do this",
       });
     }
 
@@ -373,10 +421,16 @@ const updateTaskPriority = async (req, res) => {
     task.priority = priority;
     await task.save();
 
-    // record activity
     await recordActivity(req.user._id, "updated_task", "Task", taskId, {
       description: `updated task priority from ${oldPriority} to ${priority}`,
     });
+
+    emitInvalidate(`task:${taskId}`, ["task", taskId]);
+    emitInvalidate(`task:${taskId}`, ["task-activity", taskId]);
+    emitInvalidate(`project:${project._id}`, [
+      "project",
+      project._id.toString(),
+    ]);
 
     res.status(200).json(task);
   } catch (error) {
@@ -408,13 +462,15 @@ const addSubTask = async (req, res) => {
       });
     }
 
-    const isMember = project.members.some(
-      (member) => member.user.toString() === req.user._id.toString(),
+    const { allowed } = hasProjectPermission(
+      project,
+      req.user._id,
+      "contributor",
     );
 
-    if (!isMember) {
+    if (!allowed) {
       return res.status(403).json({
-        message: "You are not a member of this project",
+        message: "You need at least contributor access to do this",
       });
     }
 
@@ -426,10 +482,12 @@ const addSubTask = async (req, res) => {
     task.subtasks.push(newSubTask);
     await task.save();
 
-    // record activity
     await recordActivity(req.user._id, "created_subtask", "Task", taskId, {
       description: `created subtask ${title}`,
     });
+
+    emitInvalidate(`task:${taskId}`, ["task", taskId]);
+    emitInvalidate(`task:${taskId}`, ["task-activity", taskId]);
 
     res.status(201).json(task);
   } catch (error) {
@@ -454,6 +512,26 @@ const updateSubTask = async (req, res) => {
       });
     }
 
+    const project = await Project.findById(task.project);
+
+    if (!project) {
+      return res.status(404).json({
+        message: "Project not found",
+      });
+    }
+
+    const { allowed } = hasProjectPermission(
+      project,
+      req.user._id,
+      "contributor",
+    );
+
+    if (!allowed) {
+      return res.status(403).json({
+        message: "You need at least contributor access to do this",
+      });
+    }
+
     const subTask = task.subtasks.find(
       (subTask) => subTask._id.toString() === subTaskId,
     );
@@ -467,10 +545,12 @@ const updateSubTask = async (req, res) => {
     subTask.completed = completed;
     await task.save();
 
-    // record activity
     await recordActivity(req.user._id, "updated_subtask", "Task", taskId, {
       description: `updated subtask ${subTask.title}`,
     });
+
+    emitInvalidate(`task:${taskId}`, ["task", taskId]);
+    emitInvalidate(`task:${taskId}`, ["task-activity", taskId]);
 
     res.status(200).json(task);
   } catch (error) {
@@ -504,6 +584,7 @@ const getCommentsByTaskId = async (req, res) => {
 
     const comments = await Comment.find({ task: taskId })
       .populate("author", "name profilePicture")
+      .populate("mentions.user", "name profilePicture")
       .sort({ createdAt: -1 });
 
     res.status(200).json(comments);
@@ -518,42 +599,95 @@ const getCommentsByTaskId = async (req, res) => {
 const addComment = async (req, res) => {
   try {
     const { taskId } = req.params;
-    const { text } = req.body;
+    const { text, mentions } = req.body;
 
     const task = await Task.findById(taskId);
 
     if (!task) {
-      return res.status(404).json({
-        message: "Task not found",
-      });
+      return res.status(404).json({ message: "Task not found" });
     }
 
-    const project = await Project.findById(task.project);
-
-    if (!project) {
-      return res.status(404).json({
-        message: "Project not found",
-      });
-    }
-
-    const isMember = project.members.some(
-      (member) => member.user.toString() === req.user._id.toString(),
+    const project = await Project.findById(task.project).populate(
+      "members.user",
+      "name",
     );
 
-    if (!isMember) {
+    if (!project) {
+      return res.status(404).json({ message: "Project not found" });
+    }
+
+    const { allowed } = hasProjectPermission(
+      project,
+      req.user._id,
+      "contributor",
+    );
+
+    if (!allowed) {
       return res.status(403).json({
-        message: "You are not a member of this project",
+        message: "You need at least contributor access to comment",
       });
     }
+
+    const projectMemberIds = new Set(
+      project.members.map((m) => m.user._id.toString()),
+    );
+
+    // 1. Mentions structurées envoyées par l'autocomplete
+    const structuredMentions = (mentions || []).filter(
+      (m) => m.user && projectMemberIds.has(m.user.toString()),
+    );
+
+    // 2. Filet de sécurité : détecte "@Nom" tapé à la main
+    const alreadyMatchedOffsets = new Set(
+      structuredMentions.map((m) => m.offset),
+    );
+    const fallbackMentions = [];
+
+    for (const member of project.members) {
+      const name = member.user.name;
+      if (!name) continue;
+
+      const pattern = `@${name}`;
+      let searchFrom = 0;
+      let idx = text.indexOf(pattern, searchFrom);
+
+      while (idx !== -1) {
+        if (!alreadyMatchedOffsets.has(idx)) {
+          fallbackMentions.push({
+            user: member.user._id,
+            offset: idx,
+            length: pattern.length,
+          });
+          alreadyMatchedOffsets.add(idx);
+        }
+        searchFrom = idx + pattern.length;
+        idx = text.indexOf(pattern, searchFrom);
+      }
+    }
+
+    const validMentions = [...structuredMentions, ...fallbackMentions];
 
     const newComment = await Comment.create({
       text,
       task: taskId,
       author: req.user._id,
+      mentions: validMentions,
     });
 
     task.comments.push(newComment._id);
     await task.save();
+
+    const mentionedIds = new Set(validMentions.map((m) => m.user.toString()));
+
+    for (const mentionedId of mentionedIds) {
+      await notify({
+        recipient: mentionedId,
+        sender: req.user._id,
+        type: "mentioned",
+        message: `${req.user.name} mentioned you in a comment on: "${task.title}"`,
+        link: `/workspaces/${project.workspace}/projects/${project._id}/tasks/${task._id}`,
+      });
+    }
 
     const commentRecipients = new Set([
       ...task.assignees.map((a) => a.toString()),
@@ -561,6 +695,8 @@ const addComment = async (req, res) => {
     ]);
 
     for (const recipientId of commentRecipients) {
+      if (mentionedIds.has(recipientId)) continue;
+
       await notify({
         recipient: recipientId,
         sender: req.user._id,
@@ -570,14 +706,21 @@ const addComment = async (req, res) => {
       });
     }
 
-    // record activity
     await recordActivity(req.user._id, "added_comment", "Task", taskId, {
       description: `added comment ${
         text.substring(0, 50) + (text.length > 50 ? "..." : "")
       }`,
     });
 
-    res.status(201).json(newComment);
+    const populated = await newComment.populate([
+      { path: "author", select: "name profilePicture" },
+      { path: "mentions.user", select: "name profilePicture" },
+    ]);
+
+    emitInvalidate(`task:${taskId}`, ["comments", taskId]);
+    emitInvalidate(`task:${taskId}`, ["task-activity", taskId]);
+
+    res.status(201).json(populated);
   } catch (error) {
     console.log(error);
     return res.status(500).json({
@@ -606,13 +749,15 @@ const watchTask = async (req, res) => {
       });
     }
 
-    const isMember = project.members.some(
-      (member) => member.user.toString() === req.user._id.toString(),
+    const { allowed } = hasProjectPermission(
+      project,
+      req.user._id,
+      "contributor",
     );
 
-    if (!isMember) {
+    if (!allowed) {
       return res.status(403).json({
-        message: "You are not a member of this project",
+        message: "You need at least contributor access to do this",
       });
     }
 
@@ -628,12 +773,14 @@ const watchTask = async (req, res) => {
 
     await task.save();
 
-    // record activity
     await recordActivity(req.user._id, "updated_task", "Task", taskId, {
       description: `${
         isWatching ? "stopped watching" : "started watching"
       } task ${task.title}`,
     });
+
+    emitInvalidate(`task:${taskId}`, ["task", taskId]);
+    emitInvalidate(`task:${taskId}`, ["task-activity", taskId]);
 
     res.status(200).json(task);
   } catch (error) {
@@ -664,26 +811,35 @@ const achievedTask = async (req, res) => {
       });
     }
 
-    const isMember = project.members.some(
-      (member) => member.user.toString() === req.user._id.toString(),
+    const { allowed } = hasProjectPermission(
+      project,
+      req.user._id,
+      "contributor",
     );
 
-    if (!isMember) {
+    if (!allowed) {
       return res.status(403).json({
-        message: "You are not a member of this project",
+        message: "You need at least contributor access to do this",
       });
     }
+
     const isAchieved = task.isArchived;
 
     task.isArchived = !isAchieved;
     await task.save();
 
-    // record activity
     await recordActivity(req.user._id, "updated_task", "Task", taskId, {
       description: `${isAchieved ? "unachieved" : "achieved"} task ${
         task.title
       }`,
     });
+
+    emitInvalidate(`task:${taskId}`, ["task", taskId]);
+    emitInvalidate(`task:${taskId}`, ["task-activity", taskId]);
+    emitInvalidate(`project:${project._id}`, [
+      "project",
+      project._id.toString(),
+    ]);
 
     res.status(200).json(task);
   } catch (error) {
@@ -730,22 +886,29 @@ const deleteTask = async (req, res) => {
       });
     }
 
-    const isMember = project.members.some(
-      (member) => member.user.toString() === req.user._id.toString(),
-    );
+    const { allowed } = hasProjectPermission(project, req.user._id, "manager");
 
-    if (!isMember) {
+    if (!allowed) {
       return res.status(403).json({
-        message: "You are not a member of this project",
+        message: "You need manager access to delete tasks",
       });
     }
 
     await Task.findByIdAndDelete(taskId);
 
-    // record activity
     await recordActivity(req.user._id, "deleted_task", "Task", taskId, {
       description: `deleted task ${task.title}`,
     });
+
+    emitInvalidate(`project:${project._id}`, [
+      "project",
+      project._id.toString(),
+    ]);
+    emitInvalidate(`workspace:${project.workspace}`, [
+      "workspace",
+      project.workspace.toString(),
+      "stats",
+    ]);
 
     res.status(200).json({
       message: "Task deleted successfully",
@@ -782,13 +945,15 @@ const addAttachment = async (req, res) => {
       });
     }
 
-    const isMember = project.members.some(
-      (member) => member.user.toString() === req.user._id.toString(),
+    const { allowed } = hasProjectPermission(
+      project,
+      req.user._id,
+      "contributor",
     );
 
-    if (!isMember) {
+    if (!allowed) {
       return res.status(403).json({
-        message: "You are not a member of this project",
+        message: "You need at least contributor access to do this",
       });
     }
 
@@ -816,10 +981,12 @@ const addAttachment = async (req, res) => {
 
     await task.save();
 
-    // record activity
     await recordActivity(req.user._id, "updated_task", "Task", taskId, {
       description: `added attachment ${req.file.originalname}`,
     });
+
+    emitInvalidate(`task:${taskId}`, ["task", taskId]);
+    emitInvalidate(`task:${taskId}`, ["task-activity", taskId]);
 
     res.status(201).json(task);
   } catch (error) {
@@ -850,13 +1017,15 @@ const deleteAttachment = async (req, res) => {
       });
     }
 
-    const isMember = project.members.some(
-      (member) => member.user.toString() === req.user._id.toString(),
+    const { allowed } = hasProjectPermission(
+      project,
+      req.user._id,
+      "contributor",
     );
 
-    if (!isMember) {
+    if (!allowed) {
       return res.status(403).json({
-        message: "You are not a member of this project",
+        message: "You need at least contributor access to do this",
       });
     }
 
@@ -870,10 +1039,12 @@ const deleteAttachment = async (req, res) => {
     task.attachments.pull({ _id: attachmentId });
     await task.save();
 
-    // record activity
     await recordActivity(req.user._id, "updated_task", "Task", taskId, {
       description: `removed attachment ${fileName}`,
     });
+
+    emitInvalidate(`task:${taskId}`, ["task", taskId]);
+    emitInvalidate(`task:${taskId}`, ["task-activity", taskId]);
 
     res.status(200).json(task);
   } catch (error) {
@@ -900,13 +1071,15 @@ const startTimer = async (req, res) => {
       return res.status(404).json({ message: "Project not found" });
     }
 
-    const isMember = project.members.some(
-      (member) => member.user.toString() === req.user._id.toString(),
+    const { allowed } = hasProjectPermission(
+      project,
+      req.user._id,
+      "contributor",
     );
 
-    if (!isMember) {
+    if (!allowed) {
       return res.status(403).json({
-        message: "You are not a member of this project",
+        message: "You need at least contributor access to do this",
       });
     }
 
@@ -927,6 +1100,8 @@ const startTimer = async (req, res) => {
     });
 
     await task.save();
+
+    emitInvalidate(`task:${taskId}`, ["task", taskId]);
 
     res.status(200).json(task);
   } catch (error) {
@@ -951,13 +1126,15 @@ const stopTimer = async (req, res) => {
       return res.status(404).json({ message: "Project not found" });
     }
 
-    const isMember = project.members.some(
-      (member) => member.user.toString() === req.user._id.toString(),
+    const { allowed } = hasProjectPermission(
+      project,
+      req.user._id,
+      "contributor",
     );
 
-    if (!isMember) {
+    if (!allowed) {
       return res.status(403).json({
-        message: "You are not a member of this project",
+        message: "You need at least contributor access to do this",
       });
     }
 
@@ -991,6 +1168,9 @@ const stopTimer = async (req, res) => {
       )} minutes on task ${task.title}`,
     });
 
+    emitInvalidate(`task:${taskId}`, ["task", taskId]);
+    emitInvalidate(`task:${taskId}`, ["task-activity", taskId]);
+
     res.status(200).json(task);
   } catch (error) {
     console.log(error);
@@ -1022,13 +1202,15 @@ const addManualTimeEntry = async (req, res) => {
       return res.status(404).json({ message: "Project not found" });
     }
 
-    const isMember = project.members.some(
-      (member) => member.user.toString() === req.user._id.toString(),
+    const { allowed } = hasProjectPermission(
+      project,
+      req.user._id,
+      "contributor",
     );
 
-    if (!isMember) {
+    if (!allowed) {
       return res.status(403).json({
-        message: "You are not a member of this project",
+        message: "You need at least contributor access to do this",
       });
     }
 
@@ -1048,6 +1230,8 @@ const addManualTimeEntry = async (req, res) => {
     task.actualHours = Math.round((totalSeconds / 3600) * 100) / 100;
 
     await task.save();
+
+    emitInvalidate(`task:${taskId}`, ["task", taskId]);
 
     res.status(201).json(task);
   } catch (error) {
@@ -1072,13 +1256,15 @@ const deleteTimeEntry = async (req, res) => {
       return res.status(404).json({ message: "Project not found" });
     }
 
-    const isMember = project.members.some(
-      (member) => member.user.toString() === req.user._id.toString(),
+    const { allowed } = hasProjectPermission(
+      project,
+      req.user._id,
+      "contributor",
     );
 
-    if (!isMember) {
+    if (!allowed) {
       return res.status(403).json({
-        message: "You are not a member of this project",
+        message: "You need at least contributor access to do this",
       });
     }
 
@@ -1092,12 +1278,15 @@ const deleteTimeEntry = async (req, res) => {
 
     await task.save();
 
+    emitInvalidate(`task:${taskId}`, ["task", taskId]);
+
     res.status(200).json(task);
   } catch (error) {
     console.log(error);
     return res.status(500).json({ message: "Internal server error" });
   }
 };
+
 const updateTaskSchedule = async (req, res) => {
   try {
     const { taskId } = req.params;
@@ -1115,13 +1304,15 @@ const updateTaskSchedule = async (req, res) => {
       return res.status(404).json({ message: "Project not found" });
     }
 
-    const isMember = project.members.some(
-      (member) => member.user.toString() === req.user._id.toString(),
+    const { allowed } = hasProjectPermission(
+      project,
+      req.user._id,
+      "contributor",
     );
 
-    if (!isMember) {
+    if (!allowed) {
       return res.status(403).json({
-        message: "You are not a member of this project",
+        message: "You need at least contributor access to do this",
       });
     }
 
@@ -1140,6 +1331,13 @@ const updateTaskSchedule = async (req, res) => {
       description: `updated schedule for task ${task.title}`,
     });
 
+    emitInvalidate(`task:${taskId}`, ["task", taskId]);
+    emitInvalidate(`task:${taskId}`, ["task-activity", taskId]);
+    emitInvalidate(`project:${project._id}`, [
+      "project",
+      project._id.toString(),
+    ]);
+
     res.status(200).json(task);
   } catch (error) {
     console.log(error);
@@ -1150,7 +1348,7 @@ const updateTaskSchedule = async (req, res) => {
 const updateTaskDependencies = async (req, res) => {
   try {
     const { taskId } = req.params;
-    const { dependencies } = req.body; // array of task ids
+    const { dependencies } = req.body;
 
     const task = await Task.findById(taskId);
 
@@ -1164,13 +1362,15 @@ const updateTaskDependencies = async (req, res) => {
       return res.status(404).json({ message: "Project not found" });
     }
 
-    const isMember = project.members.some(
-      (member) => member.user.toString() === req.user._id.toString(),
+    const { allowed } = hasProjectPermission(
+      project,
+      req.user._id,
+      "contributor",
     );
 
-    if (!isMember) {
+    if (!allowed) {
       return res.status(403).json({
-        message: "You are not a member of this project",
+        message: "You need at least contributor access to do this",
       });
     }
 
@@ -1195,8 +1395,6 @@ const updateTaskDependencies = async (req, res) => {
       }
     }
 
-    // Cycle detection: build the dependency graph for the whole project,
-    // apply the proposed change, and walk it with DFS looking for a cycle.
     const graph = new Map();
     for (const t of allProjectTasks) {
       graph.set(
@@ -1234,6 +1432,13 @@ const updateTaskDependencies = async (req, res) => {
     await recordActivity(req.user._id, "updated_task", "Task", taskId, {
       description: `updated dependencies for task ${task.title}`,
     });
+
+    emitInvalidate(`task:${taskId}`, ["task", taskId]);
+    emitInvalidate(`task:${taskId}`, ["task-activity", taskId]);
+    emitInvalidate(`project:${project._id}`, [
+      "project",
+      project._id.toString(),
+    ]);
 
     res.status(200).json(task);
   } catch (error) {

@@ -89,6 +89,7 @@ const getWorkspaceProjects = async (req, res) => {
       members: { $elemMatch: { user: req.user._id } },
     })
       .populate("tasks", "status")
+      .populate("members.user", "name email profilePicture")
       .sort({ createdAt: -1 });
 
     res.status(200).json({ projects, workspace });
@@ -488,6 +489,7 @@ const inviteUserToWorkspace = async (req, res) => {
 const acceptGenerateInvite = async (req, res) => {
   try {
     const { workspaceId } = req.params;
+    const { role } = req.query; // 👈 lu depuis l'URL
 
     const workspace = await Workspace.findById(workspaceId);
 
@@ -507,9 +509,14 @@ const acceptGenerateInvite = async (req, res) => {
       });
     }
 
+    // Seuls admin/member/viewer sont autorisables via lien partagé.
+    // "owner" reste réservé au créateur du workspace, jamais attribuable via un lien.
+    const allowedRoles = ["admin", "member", "viewer"];
+    const finalRole = allowedRoles.includes(role) ? role : "member";
+
     workspace.members.push({
       user: req.user._id,
-      role: "member",
+      role: finalRole, // 👈 remplace le "member" en dur
       joinedAt: new Date(),
     });
 
@@ -653,6 +660,35 @@ const deleteWorkspace = async (req, res) => {
   }
 };
 
+const updateWorkspace = async (req, res) => {
+  try {
+    const { workspaceId } = req.params;
+    const { name, description, color } = req.body;
+
+    const workspace = await Workspace.findById(workspaceId);
+
+    if (!workspace) {
+      return res.status(404).json({
+        message: "Workspace not found",
+      });
+    }
+
+    workspace.name = name || workspace.name;
+    workspace.description = description || workspace.description;
+    workspace.color = color || workspace.color;
+
+    await workspace.save();
+
+    return res.status(200).json({
+      message: "Workspace updated successfully",
+    });
+  } catch (error) {
+    console.log(error);
+    return res.status(500).json({
+      message: "Internal server error",
+    });
+  }
+};
 export {
   createWorkspace,
   getWorkspaces,
@@ -663,4 +699,5 @@ export {
   acceptGenerateInvite,
   acceptInviteByToken,
   deleteWorkspace,
+  updateWorkspace,
 };

@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Play, Square, Clock, Trash2, Plus } from "lucide-react";
+import { Play, Square, Clock, Trash2, Plus, Timer } from "lucide-react";
 import { useAuth } from "@/provider/auth-context";
 import {
   useStartTimerMutation,
@@ -12,11 +12,15 @@ import {
 import type { TimeEntry } from "@/types";
 import { toast } from "sonner";
 import { format } from "date-fns";
+import { cn } from "@/lib/utils";
 
 interface TaskTimeTrackingProps {
   taskId: string;
   timeEntries: TimeEntry[];
+  canEdit?: boolean;
 }
+
+const POMODORO_DURATION_SECONDS = 25 * 60;
 
 const formatDuration = (totalSeconds: number) => {
   const h = Math.floor(totalSeconds / 3600);
@@ -25,15 +29,25 @@ const formatDuration = (totalSeconds: number) => {
   return `${h}h ${m}m`;
 };
 
+const formatClock = (totalSeconds: number) => {
+  const clamped = Math.max(0, totalSeconds);
+  const m = Math.floor(clamped / 60);
+  const s = clamped % 60;
+  return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+};
+
 export const TaskTimeTracking = ({
   taskId,
   timeEntries,
+  canEdit = true,
 }: TaskTimeTrackingProps) => {
   const { user } = useAuth();
   const [now, setNow] = useState(Date.now());
   const [showManualForm, setShowManualForm] = useState(false);
   const [manualStart, setManualStart] = useState("");
   const [manualEnd, setManualEnd] = useState("");
+  const [pomodoroMode, setPomodoroMode] = useState(false);
+  const hasAutoStoppedRef = useRef(false);
 
   const { mutate: startTimer, isPending: isStarting } = useStartTimerMutation();
   const { mutate: stopTimer, isPending: isStopping } = useStopTimerMutation();
@@ -50,7 +64,10 @@ export const TaskTimeTracking = ({
   );
 
   useEffect(() => {
-    if (!activeEntry) return;
+    if (!activeEntry) {
+      hasAutoStoppedRef.current = false;
+      return;
+    }
     const interval = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(interval);
   }, [activeEntry]);
@@ -66,7 +83,33 @@ export const TaskTimeTracking = ({
     [timeEntries, activeEntry, liveElapsed],
   );
 
+  // Auto-stop du timer quand la session Pomodoro atteint 25 min
+  useEffect(() => {
+    if (
+      pomodoroMode &&
+      activeEntry &&
+      liveElapsed >= POMODORO_DURATION_SECONDS &&
+      !hasAutoStoppedRef.current
+    ) {
+      hasAutoStoppedRef.current = true;
+      stopTimer(
+        { taskId },
+        {
+          onSuccess: () => {
+            toast.success("Session Pomodoro terminée ! Prends une pause 🎉");
+          },
+          onError: (error: any) => {
+            toast.error(
+              error.response?.data?.message || "Failed to stop timer",
+            );
+          },
+        },
+      );
+    }
+  }, [pomodoroMode, activeEntry, liveElapsed, stopTimer, taskId]);
+
   const handleStart = () => {
+    hasAutoStoppedRef.current = false;
     startTimer(
       { taskId },
       {
@@ -135,6 +178,12 @@ export const TaskTimeTracking = ({
 
   const loggedEntries = timeEntries.filter((e) => e.endTime);
 
+  const pomodoroRemaining = POMODORO_DURATION_SECONDS - liveElapsed;
+  const pomodoroProgress = Math.min(
+    100,
+    (liveElapsed / POMODORO_DURATION_SECONDS) * 100,
+  );
+
   return (
     <div className="mb-6">
       <div className="flex items-center justify-between mb-2">
@@ -147,33 +196,73 @@ export const TaskTimeTracking = ({
         </span>
       </div>
 
-      <div className="flex items-center gap-2 mb-3">
-        {activeEntry ? (
-          <Button
-            variant="destructive"
-            size="sm"
-            onClick={handleStop}
-            disabled={isStopping}
-          >
-            <Square className="size-4 mr-2" />
-            Stop ({formatDuration(liveElapsed)})
-          </Button>
-        ) : (
-          <Button size="sm" onClick={handleStart} disabled={isStarting}>
-            <Play className="size-4 mr-2" />
-            Start Timer
-          </Button>
-        )}
+      {canEdit && ( // 👈 masque Start Timer / Focus Mode / Log time pour un viewer
+        <div className="flex flex-wrap items-center gap-2 mb-3">
+          {activeEntry ? (
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={handleStop}
+              disabled={isStopping}
+            >
+              <Square className="size-4 mr-2" />
+              Stop (
+              {pomodoroMode
+                ? formatClock(pomodoroRemaining)
+                : formatDuration(liveElapsed)}
+              )
+            </Button>
+          ) : (
+            <Button size="sm" onClick={handleStart} disabled={isStarting}>
+              <Play className="size-4 mr-2" />
+              {pomodoroMode ? "Start Focus (25m)" : "Start Timer"}
+            </Button>
+          )}
 
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => setShowManualForm((v) => !v)}
-        >
-          <Plus className="size-4 mr-2" />
-          Log time
-        </Button>
-      </div>
+          <Button
+            variant={pomodoroMode ? "default" : "outline"}
+            size="sm"
+            onClick={() => setPomodoroMode((v) => !v)}
+            disabled={!!activeEntry}
+            title={
+              activeEntry
+                ? "Stop the current timer to change mode"
+                : "Toggle Pomodoro focus mode (25 min)"
+            }
+          >
+            <Timer className="size-4 mr-2" />
+            Focus Mode
+          </Button>
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowManualForm((v) => !v)}
+          >
+            <Plus className="size-4 mr-2" />
+            Log time
+          </Button>
+        </div>
+      )}
+      {pomodoroMode && activeEntry && (
+        <div className="mb-3 p-3 border rounded-md bg-muted/30">
+          <div className="flex items-center justify-between mb-1.5">
+            <span className="text-sm font-medium">Focus session</span>
+            <span className="text-sm tabular-nums text-muted-foreground">
+              {formatClock(pomodoroRemaining)} restant
+            </span>
+          </div>
+          <div className="h-2 rounded-full bg-muted overflow-hidden">
+            <div
+              className={cn(
+                "h-full rounded-full transition-all duration-1000 bg-primary",
+                pomodoroProgress >= 100 && "bg-green-500",
+              )}
+              style={{ width: `${pomodoroProgress}%` }}
+            />
+          </div>
+        </div>
+      )}
 
       {showManualForm && (
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 mb-3 p-3 border rounded-md">

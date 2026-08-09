@@ -1,3 +1,7 @@
+// ==========================================
+// USER & WORKSPACE TYPES
+// ==========================================
+
 export interface User {
   _id: string;
   email: string;
@@ -22,12 +26,30 @@ export interface Workspace {
   createdAt: Date;
   updatedAt: Date;
 }
+
+export interface MemberProps {
+  _id: string;
+  user: User;
+  role: "admin" | "member" | "owner" | "viewer";
+  joinedAt: Date;
+}
+
+// ==========================================
+// PROJECT TYPES
+// ==========================================
+
 export enum ProjectStatus {
   PLANNING = "Planning",
   IN_PROGRESS = "In Progress",
   ON_HOLD = "On Hold",
   COMPLETED = "Completed",
   CANCELLED = "Cancelled",
+}
+
+export enum ProjectMemberRole {
+  MANAGER = "manager",
+  CONTRIBUTOR = "contributor",
+  VIEWER = "viewer",
 }
 
 export interface Project {
@@ -43,26 +65,69 @@ export interface Project {
   tasks: Task[];
   members: {
     user: User;
-    role: "admin" | "member" | "owner" | "viewer";
+    role: "manager" | "contributor" | "viewer";
   }[];
   createdAt: Date;
   updatedAt: Date;
   isArchived: boolean;
   coverImage?: string | null;
+  tags?: string[];
 }
+
+export interface TaskTemplateItem {
+  title: string;
+  description?: string;
+  status: TaskStatus;
+  priority: TaskPriority;
+}
+
+export interface ProjectTemplate {
+  _id: string;
+  title: string;
+  description?: string;
+  workspace: string;
+  createdBy: { _id: string; name: string };
+  tags: string[];
+  taskTemplates: TaskTemplateItem[];
+  createdAt: string;
+}
+
+// ==========================================
+// TASK & TIME TRACKING TYPES
+// ==========================================
+
 export type TaskStatus = "To Do" | "In Progress" | "Done";
 export type TaskPriority = "High" | "Medium" | "Low";
-export enum ProjectMemberRole {
-  MANAGER = "manager",
-  CONTRIBUTOR = "contributor",
-  VIEWER = "viewer",
-}
 
 export interface Subtask {
   _id: string;
   title: string;
   completed: boolean;
   createdAt: Date;
+}
+
+export interface TaskDependency {
+  _id: string;
+  title: string;
+  status: TaskStatus;
+}
+
+export interface TimeEntry {
+  _id: string;
+  user: User | string;
+  startTime: Date;
+  endTime?: Date;
+  duration?: number;
+}
+
+export interface Attachment {
+  fileName: string;
+  fileUrl: string;
+  fileType: string;
+  fileSize: number;
+  uploadedBy: string;
+  uploadedAt: Date;
+  _id: string;
 }
 
 export interface Task {
@@ -87,21 +152,34 @@ export interface Task {
   dependencies?: (TaskDependency | string)[];
 }
 
-export interface Attachment {
-  fileName: string;
-  fileUrl: string;
-  fileType: string;
-  fileSize: number;
-  uploadedBy: string;
-  uploadedAt: Date;
-  _id: string;
+// ==========================================
+// COMMENT & ACTIVITY TYPES
+// ==========================================
+
+export interface CommentReaction {
+  emoji: string;
+  user: User;
 }
 
-export interface MemberProps {
-  _id: string;
+export interface CommentMention {
   user: User;
-  role: "admin" | "member" | "owner" | "viewer";
-  joinedAt: Date;
+  offset: number;
+  length: number;
+}
+
+export interface Comment {
+  _id: string;
+  author: User;
+  text: string;
+  createdAt: Date;
+  reactions?: CommentReaction[];
+  mentions?: CommentMention[];
+  attachments?: {
+    fileName: string;
+    fileUrl: string;
+    fileType?: string;
+    fileSize?: number;
+  }[];
 }
 
 export type ResourceType =
@@ -134,23 +212,26 @@ export interface ActivityLog {
   createdAt: Date;
 }
 
-export interface CommentReaction {
-  emoji: string;
-  user: User;
-}
+// ==========================================
+// MISC & DASHBOARD / STATS TYPES
+// ==========================================
 
-export interface Comment {
+export interface Note {
   _id: string;
-  author: User;
-  text: string;
-  createdAt: Date;
-  reactions?: CommentReaction[];
-  attachments?: {
-    fileName: string;
-    fileUrl: string;
-    fileType?: string;
-    fileSize?: number;
-  }[];
+  title: string;
+  content: string;
+  project?: {
+    _id: string;
+    title: string;
+    workspace: string; // ObjectId
+  };
+  createdBy?: {
+    _id: string;
+    name: string;
+    profilePicture?: string;
+  };
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface StatsCardProps {
@@ -160,6 +241,9 @@ export interface StatsCardProps {
   totalTaskCompleted: number;
   totalTaskToDo: number;
   totalTaskInProgress: number;
+  totalTaskOverdue: number;
+  completionRate: number; // pourcentage, ex: 62.5
+  avgCompletionDays: number | null; // null si aucune tâche "Done"
 }
 
 export interface TaskTrendsData {
@@ -185,51 +269,6 @@ export interface WorkspaceProductivityData {
   name: string;
   completed: number;
   total: number;
-}
-export interface TimeEntry {
-  _id: string;
-  user: User | string;
-  startTime: Date;
-  endTime?: Date;
-  duration?: number;
-}
-
-export interface TaskDependency {
-  _id: string;
-  title: string;
-  status: TaskStatus;
-}
-
-export interface Note {
-  _id: string;
-  title: string;
-  content: string;
-  project?: {
-    _id: string;
-    title: string;
-    workspace: string; // ObjectId
-  };
-
-  createdBy?: {
-    _id: string;
-    name: string;
-    profilePicture?: string;
-  };
-  createdAt: string;
-  updatedAt: string;
-}
-
-// Remplace StatsCardProps par cette version étendue
-export interface StatsCardProps {
-  totalProjects: number;
-  totalTasks: number;
-  totalProjectInProgress: number;
-  totalTaskCompleted: number;
-  totalTaskToDo: number;
-  totalTaskInProgress: number;
-  totalTaskOverdue: number;
-  completionRate: number; // pourcentage, ex: 62.5
-  avgCompletionDays: number | null; // null si aucune tâche "Done"
 }
 
 export interface WorkloadData {

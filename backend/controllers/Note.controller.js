@@ -1,15 +1,14 @@
 import Note from "../models/note.model.js";
 import Project from "../models/project.model.js";
+import { hasProjectPermission } from "../libs/permissions.js";
+import { emitInvalidate } from "../libs/socket.js";
 
-const checkProjectMembership = async (projectId, userId) => {
+const checkProjectPermission = async (projectId, userId, minRole) => {
   const project = await Project.findById(projectId);
-  if (!project) return { project: null, isMember: false };
+  if (!project) return { project: null, allowed: false };
 
-  const isMember = project.members.some(
-    (member) => member.user.toString() === userId.toString(),
-  );
-
-  return { project, isMember };
+  const { allowed } = hasProjectPermission(project, userId, minRole);
+  return { project, allowed };
 };
 
 const createNote = async (req, res) => {
@@ -17,18 +16,19 @@ const createNote = async (req, res) => {
     const { projectId } = req.params;
     const { title, content } = req.body;
 
-    const { project, isMember } = await checkProjectMembership(
+    const { project, allowed } = await checkProjectPermission(
       projectId,
       req.user._id,
+      "contributor",
     );
 
     if (!project) {
       return res.status(404).json({ message: "Project not found" });
     }
 
-    if (!isMember) {
+    if (!allowed) {
       return res.status(403).json({
-        message: "You are not a member of this project",
+        message: "You need at least contributor access to create notes",
       });
     }
 
@@ -38,6 +38,8 @@ const createNote = async (req, res) => {
       project: projectId,
       createdBy: req.user._id,
     });
+
+    emitInvalidate(`project:${projectId}`, ["notes", projectId]);
 
     return res.status(201).json(note);
   } catch (error) {
@@ -50,16 +52,17 @@ const getProjectNotes = async (req, res) => {
   try {
     const { projectId } = req.params;
 
-    const { project, isMember } = await checkProjectMembership(
+    const { project, allowed } = await checkProjectPermission(
       projectId,
       req.user._id,
+      "viewer",
     );
 
     if (!project) {
       return res.status(404).json({ message: "Project not found" });
     }
 
-    if (!isMember) {
+    if (!allowed) {
       return res.status(403).json({
         message: "You are not a member of this project",
       });
@@ -87,14 +90,15 @@ const updateNote = async (req, res) => {
       return res.status(404).json({ message: "Note not found" });
     }
 
-    const { isMember } = await checkProjectMembership(
+    const { allowed } = await checkProjectPermission(
       note.project,
       req.user._id,
+      "contributor",
     );
 
-    if (!isMember) {
+    if (!allowed) {
       return res.status(403).json({
-        message: "You are not a member of this project",
+        message: "You need at least contributor access to edit notes",
       });
     }
 
@@ -102,6 +106,11 @@ const updateNote = async (req, res) => {
     if (content !== undefined) note.content = content;
 
     await note.save();
+
+    emitInvalidate(`project:${note.project.toString()}`, [
+      "notes",
+      note.project.toString(),
+    ]);
 
     return res.status(200).json(note);
   } catch (error) {
@@ -120,18 +129,23 @@ const deleteNote = async (req, res) => {
       return res.status(404).json({ message: "Note not found" });
     }
 
-    const { isMember } = await checkProjectMembership(
+    const { allowed } = await checkProjectPermission(
       note.project,
       req.user._id,
+      "contributor",
     );
 
-    if (!isMember) {
+    if (!allowed) {
       return res.status(403).json({
-        message: "You are not a member of this project",
+        message: "You need at least contributor access to delete notes",
       });
     }
 
+    const projectId = note.project.toString();
+
     await note.deleteOne();
+
+    emitInvalidate(`project:${projectId}`, ["notes", projectId]);
 
     return res.status(200).json({ message: "Note deleted successfully" });
   } catch (error) {

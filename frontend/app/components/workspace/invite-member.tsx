@@ -65,8 +65,9 @@ export const InviteMemberDialog = ({
   };
 
   const handleCopyInviteLink = () => {
+    const role = form.watch("role");
     navigator.clipboard.writeText(
-      `${window.location.origin}/workspace-invite/${workspaceId}`,
+      `${window.location.origin}/workspace-invite/${workspaceId}?role=${role}`,
     );
     setLinkCopied(true);
 
@@ -178,11 +179,43 @@ export const InviteMemberDialog = ({
           <TabsContent value="link">
             <div className="grid gap-4">
               <div className="grid gap-2">
+                <Label>Select role for this link</Label>
+                <div className="flex gap-3 flex-wrap">
+                  {ROLES.map((role) => (
+                    <label
+                      key={role}
+                      className="flex items-center cursor-pointer gap-2"
+                    >
+                      <input
+                        type="radio"
+                        value={role}
+                        className="peer hidden"
+                        checked={form.watch("role") === role}
+                        onChange={() => form.setValue("role", role)}
+                      />
+                      <span
+                        className={cn(
+                          "w-7 h-7 rounded-full border-2 border-blue-300 flex items-center justify-center transition-all duration-300 hover:shadow-lg bg-blue-900 text-white",
+                          form.watch("role") === role &&
+                            "ring-2 ring-blue-500 ring-offset-2 ",
+                        )}
+                      >
+                        {form.watch("role") === role && (
+                          <span className="w-3 h-3 rounded-full bg-white" />
+                        )}
+                      </span>
+                      <span className="capitalize">{role}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              <div className="grid gap-2">
                 <Label>Share this link to invite people</Label>
                 <div className="flex items-center space-x-2">
                   <Input
                     readOnly
-                    value={`${window.location.origin}/workspace-invite/${workspaceId}`}
+                    value={`${window.location.origin}/workspace-invite/${workspaceId}?role=${form.watch("role")}`}
                   />
                   <Button onClick={handleCopyInviteLink} disabled={isPending}>
                     {linkCopied ? (
@@ -199,8 +232,13 @@ export const InviteMemberDialog = ({
                   </Button>
                 </div>
               </div>
+
               <p className="text-sm text-muted-foreground">
-                Anyone with the link can join this workspace
+                Anyone with the link joins as{" "}
+                <span className="font-medium capitalize">
+                  {form.watch("role")}
+                </span>
+                .
               </p>
             </div>
           </TabsContent>
