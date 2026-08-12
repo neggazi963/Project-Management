@@ -1,5 +1,4 @@
 import { BackButton } from "@/components/back-button";
-import { Loader } from "@/components/loader";
 import { CreateProjectDialog } from "@/components/project/create-project";
 import { InviteMemberDialog } from "@/components/workspace/invite-member";
 import { ProjectList } from "@/components/workspace/project-list";
@@ -13,6 +12,56 @@ import { CreateFromTemplateDialog } from "@/components/workspace/create-from-tem
 import { LayoutTemplate } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useWorkspaceRole } from "@/hooks/use-workspace-role";
+import { Card, CardHeader, CardContent } from "@/components/ui/card";
+
+// Skeleton de chargement pour la page de détail d'un workspace
+const WorkspaceDetailsSkeleton = () => {
+  return (
+    <div className="space-y-8 animate-pulse">
+      {/* Skeleton BackButton */}
+      <div className="h-9 w-24 bg-muted rounded-md" />
+
+      {/* Skeleton WorkspaceHeader */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b pb-6">
+        <div className="flex items-center gap-4">
+          <div className="size-16 rounded-lg bg-muted" />
+          <div className="space-y-2">
+            <div className="h-7 w-48 bg-muted rounded" />
+            <div className="h-4 w-32 bg-muted rounded" />
+          </div>
+        </div>
+        <div className="flex gap-2">
+          <div className="h-10 w-28 bg-muted rounded-md" />
+          <div className="h-10 w-32 bg-muted rounded-md" />
+        </div>
+      </div>
+
+      {/* Skeleton ProjectList Header */}
+      <div className="flex items-center justify-between">
+        <div className="h-6 w-32 bg-muted rounded" />
+        <div className="h-9 w-28 bg-muted rounded-md" />
+      </div>
+
+      {/* Skeleton Projects Grid */}
+      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        {Array.from({ length: 3 }).map((_, index) => (
+          <Card key={index} className="h-35 animate-pulse">
+            <CardHeader className="pb-2">
+              <div className="flex items-center justify-between">
+                <div className="h-5 w-32 bg-muted rounded" />
+                <div className="h-5 w-16 bg-muted rounded-full" />
+              </div>
+              <div className="mt-3 h-3 w-3/4 bg-muted rounded" />
+            </CardHeader>
+            <CardContent>
+              <div className="h-3 w-1/3 bg-muted rounded" />
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    </div>
+  );
+};
 
 const WorkspaceDetails = () => {
   const { workspaceId } = useParams<{ workspaceId: string }>();
@@ -30,18 +79,15 @@ const WorkspaceDetails = () => {
     isLoading: boolean;
   };
 
-  const { canCreateProject, canInvite } = useWorkspaceRole(data?.workspace); // 👈 avant tout return
+  const { canCreateProject, canInvite } = useWorkspaceRole(data?.workspace);
 
   if (!workspaceId) {
     return <div>No workspace found</div>;
   }
 
+  // Remplacement du Loader par le Skeleton
   if (isLoading) {
-    return (
-      <div>
-        <Loader />
-      </div>
-    );
+    return <WorkspaceDetailsSkeleton />;
   }
 
   return (
@@ -53,7 +99,7 @@ const WorkspaceDetails = () => {
         onCreateProject={() => setIsCreateProject(true)}
         onInviteMember={() => setIsInviteMember(true)}
         canCreateProject={canCreateProject}
-        canInvite={canInvite} // 👈 ajoute
+        canInvite={canInvite}
       />
 
       <ProjectList
@@ -71,14 +117,14 @@ const WorkspaceDetails = () => {
         />
       )}
 
-      {canCreateProject && ( // 👈 masque "From Template" pour un viewer
+      {canCreateProject && (
         <Button variant="outline" onClick={() => setIsFromTemplate(true)}>
           <LayoutTemplate className="size-4 mr-2" />
           From Template
         </Button>
       )}
 
-      {canInvite && ( 
+      {canInvite && (
         <InviteMemberDialog
           isOpen={isInviteMember}
           onOpenChange={setIsInviteMember}

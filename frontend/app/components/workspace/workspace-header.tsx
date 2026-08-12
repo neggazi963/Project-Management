@@ -26,6 +26,9 @@ export const WorkspaceHeader = ({
   canCreateProject = true,
   canInvite = true,
 }: WorkspaceHeaderProps) => {
+  // Un membre dont l'utilisateur a été supprimé/banni-purgé n'a plus de `user` valide — on l'ignore côté affichage
+  const validMembers = members.filter((member) => !!member.user);
+
   return (
     <div className="space-y-8">
       <div className="space-y-3">
@@ -41,7 +44,7 @@ export const WorkspaceHeader = ({
           </div>
 
           <div className="flex items-center gap-3 justify-between md:justify-start mb-4 md:mb-0">
-            {canInvite && ( 
+            {canInvite && (
               <Button variant={"outline"} onClick={onInviteMember}>
                 <UserPlus className="size-4 mr-2" />
                 Invite
@@ -63,12 +66,12 @@ export const WorkspaceHeader = ({
         )}
       </div>
 
-      {members.length > 0 && (
+      {validMembers.length > 0 && (
         <div className="flex items-center gap-2">
           <span className="text-sm text-muted-foreground">Members</span>
 
           <div className="flex space-x-2">
-            {members.map((member) => (
+            {validMembers.map((member) => (
               <Avatar
                 key={member._id}
                 className="relative h-8 w-8 rounded-full  border-2 border-background overflow-hidden"

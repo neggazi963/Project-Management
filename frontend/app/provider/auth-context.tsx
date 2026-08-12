@@ -4,6 +4,7 @@ import { queryClient } from "./react-query-provider";
 import { useNavigate } from "react-router";
 import { useLocation } from "react-router";
 import { publicRoutes } from "../lib/index";
+import { toast } from "sonner";
 
 interface AuthContextValue {
   user: User | null;
@@ -55,8 +56,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }, []);
 
   useEffect(() => {
-    const handleLogout = () => {
+    const handleLogout = (event: Event) => {
+      const reason = (event as CustomEvent)?.detail?.reason;
       logout();
+      if (reason === "banned") {
+        toast.error(
+          "Your account has been suspended. Contact an admin if you think this is a mistake.",
+        );
+      } else {
+        toast.error("Your session has expired. Please log in again.");
+      }
       navigate("/sign-in");
     };
     window.addEventListener("force-logout", handleLogout);

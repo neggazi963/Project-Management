@@ -4,7 +4,13 @@ import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { useGlobalSearchQuery } from "@/hooks/use-search";
 import { useDebounce } from "@/hooks/use-debounce";
-import { Search, Layers, FolderKanban, CheckSquare } from "lucide-react";
+import {
+  Search,
+  Layers,
+  FolderKanban,
+  CheckSquare,
+  FileText, 
+} from "lucide-react";
 
 interface SearchWorkspace {
   _id: string;
@@ -23,6 +29,12 @@ interface SearchTask {
   project: { _id: string; title: string; workspace: string };
 }
 
+interface SearchNote {
+  _id: string;
+  title: string;
+  workspace?: string;
+}
+
 export const GlobalSearch = () => {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -35,6 +47,7 @@ export const GlobalSearch = () => {
           workspaces: SearchWorkspace[];
           projects: SearchProject[];
           tasks: SearchTask[];
+          notes: SearchNote[]; // 👈 Ajout dans le typage
         }
       | undefined;
     isFetching: boolean;
@@ -76,7 +89,8 @@ export const GlobalSearch = () => {
     !!data &&
     (data.workspaces.length > 0 ||
       data.projects.length > 0 ||
-      data.tasks.length > 0);
+      data.tasks.length > 0 ||
+      (data.notes && data.notes.length > 0)); 
 
   return (
     <>
@@ -99,7 +113,7 @@ export const GlobalSearch = () => {
               autoFocus
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search workspaces, projects, tasks..."
+              placeholder="Search workspaces, projects, tasks, notes..." // 👈 Placeholder mis à jour
               className="border-0 focus-visible:ring-0 shadow-none"
             />
           </div>
@@ -156,7 +170,7 @@ export const GlobalSearch = () => {
             )}
 
             {data && data.tasks.length > 0 && (
-              <div>
+              <div className="mb-2">
                 <p className="text-xs font-medium text-muted-foreground px-2 py-1">
                   Tasks
                 </p>
@@ -172,6 +186,31 @@ export const GlobalSearch = () => {
                   >
                     <CheckSquare className="size-4 text-muted-foreground shrink-0" />
                     {t.title}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* 👈 Section des Notes */}
+            {data && data.notes && data.notes.length > 0 && (
+              <div>
+                <p className="text-xs font-medium text-muted-foreground px-2 py-1">
+                  Notes
+                </p>
+                {data.notes.map((n) => (
+                  <button
+                    key={n._id}
+                    onClick={() =>
+                      goTo(
+                        n.workspace
+                          ? `/workspaces/${n.workspace}/notes/${n._id}`
+                          : `/notes/${n._id}`,
+                      )
+                    }
+                    className="w-full flex items-center gap-2 px-2 py-2 text-sm rounded hover:bg-muted text-left"
+                  >
+                    <FileText className="size-4 text-muted-foreground shrink-0" />
+                    {n.title || "Untitled Note"}
                   </button>
                 ))}
               </div>

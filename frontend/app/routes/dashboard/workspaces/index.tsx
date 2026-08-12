@@ -16,7 +16,7 @@ import {
 } from "@/hooks/use-workspace";
 import { useWorkspaceRole } from "@/hooks/use-workspace-role";
 import type { Workspace } from "@/types";
-import { Loader, Pencil, PlusCircle, Trash2, Users } from "lucide-react";
+import { Pencil, PlusCircle, Trash2, Users } from "lucide-react";
 import { useState } from "react";
 import { Link } from "react-router";
 import { format } from "date-fns";
@@ -30,6 +30,41 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
+// Composant Skeleton dédié pour la grille de Workspaces
+const WorkspacesSkeleton = () => {
+  return (
+    <div className="space-y-8">
+      <div className="flex items-center justify-between">
+        <div className="h-8 w-40 bg-muted animate-pulse rounded-md" />
+        <div className="h-10 w-36 bg-muted animate-pulse rounded-md" />
+      </div>
+
+      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        {Array.from({ length: 6 }).map((_, index) => (
+          <Card key={index} className="h-40 animate-pulse">
+            <CardHeader className="pb-2">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="size-10 rounded-full bg-muted" />
+                  <div className="space-y-2">
+                    <div className="h-4 w-28 bg-muted rounded" />
+                    <div className="h-3 w-20 bg-muted rounded" />
+                  </div>
+                </div>
+                <div className="h-4 w-8 bg-muted rounded" />
+              </div>
+              <div className="mt-4 h-3 w-3/4 bg-muted rounded" />
+            </CardHeader>
+            <CardContent>
+              <div className="h-3 w-1/2 bg-muted rounded" />
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    </div>
+  );
+};
+
 const Workspaces = () => {
   const [isCreatingWorkspace, setIsCreatingWorkspace] = useState(false);
   const [editingWorkspace, setEditingWorkspace] = useState<Workspace | null>(
@@ -41,7 +76,8 @@ const Workspaces = () => {
     isPending: boolean;
   };
 
-  if (isPending) return <Loader />;
+  // Affichage du Skeleton pendant le chargement
+  if (isPending) return <WorkspacesSkeleton />;
 
   const workspaceList = workspaces ?? [];
 
@@ -102,7 +138,6 @@ const WorkspaceCard = ({
   const { mutate: deleteWorkspace, isPending: isDeleting } =
     useDeleteWorkspaceMutation();
 
-  // Rôle calculé individuellement pour CE workspace précis, pas globalement
   const { role } = useWorkspaceRole(workspace);
   const canManageWorkspace = role === "admin" || role === "owner";
 
@@ -138,7 +173,7 @@ const WorkspaceCard = ({
 
   return (
     <Card className="relative transition-all hover:shadow-md hover:-translate-y-1 group">
-      {canManageWorkspace && ( // 👈 masque Edit + Delete pour non-admin/owner
+      {canManageWorkspace && (
         <div className="absolute top-3 right-3 flex items-center gap-1 z-20">
           <Button
             type="button"
@@ -207,7 +242,6 @@ const WorkspaceCard = ({
   );
 };
 
-// Modal d'édition connecté à l'API
 const EditWorkspaceModal = ({
   workspace,
   isOpen,
@@ -219,7 +253,6 @@ const EditWorkspaceModal = ({
 }) => {
   const [name, setName] = useState(workspace.name);
   const [description, setDescription] = useState(workspace.description || "");
-  const [color, setColor] = useState(workspace.color || "#000000");
 
   const { mutate: updateWorkspace, isPending } = useUpdateWorkspaceMutation();
 
@@ -232,7 +265,6 @@ const EditWorkspaceModal = ({
         workspaceData: {
           name,
           description,
-          color,
         },
       },
       {

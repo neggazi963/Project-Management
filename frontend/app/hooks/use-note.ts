@@ -22,6 +22,8 @@ export const useCreateNoteMutation = () => {
       queryClient.invalidateQueries({
         queryKey: ["notes", variables.projectId],
       });
+      // 🔄 Invalide le cache de la recherche globale
+      queryClient.invalidateQueries({ queryKey: ["global-search"] });
     },
   });
 };
@@ -44,6 +46,8 @@ export const useUpdateNoteMutation = () => {
       queryClient.invalidateQueries({
         queryKey: ["notes", variables.projectId],
       });
+      // 🔄 Invalide le cache de la recherche globale
+      queryClient.invalidateQueries({ queryKey: ["global-search"] });
     },
   });
 };
@@ -58,6 +62,8 @@ export const useDeleteNoteMutation = () => {
       queryClient.invalidateQueries({
         queryKey: ["notes", variables.projectId],
       });
+      // 🔄 Invalide le cache de la recherche globale
+      queryClient.invalidateQueries({ queryKey: ["global-search"] });
     },
   });
 };

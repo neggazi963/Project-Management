@@ -55,12 +55,19 @@ export const ManageMembersDialog = ({
   const [selectedRole, setSelectedRole] = useState<
     "manager" | "contributor" | "viewer"
   >("contributor");
-  const managerCount = project.members.filter(
+
+  // On ignore tout membre dont l'utilisateur référencé n'existe plus (compte supprimé)
+  const validProjectMembers = project.members.filter((m) => !!m.user);
+  const validWorkspaceMembers = (workspace?.members || []).filter(
+    (m) => !!m.user,
+  );
+
+  const managerCount = validProjectMembers.filter(
     (m) => m.role === "manager",
   ).length;
 
-  const projectMemberIds = new Set(project.members.map((m) => m.user._id));
-  const availableWorkspaceMembers = (workspace?.members || []).filter(
+  const projectMemberIds = new Set(validProjectMembers.map((m) => m.user._id));
+  const availableWorkspaceMembers = validWorkspaceMembers.filter(
     (m) => !projectMemberIds.has(m.user._id),
   );
 
@@ -129,7 +136,7 @@ export const ManageMembersDialog = ({
         </DialogHeader>
 
         <div className="space-y-3 max-h-72 overflow-y-auto">
-          {project.members.map((member) => {
+          {validProjectMembers.map((member) => {
             const isSelf = member.user._id === user?._id;
             const isLastManager =
               member.role === "manager" && managerCount <= 1;

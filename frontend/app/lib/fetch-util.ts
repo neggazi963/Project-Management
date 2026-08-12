@@ -24,6 +24,17 @@ api.interceptors.response.use(
     if (error.response && error.response.status === 401) {
       window.dispatchEvent(new Event("force-logout"));
     }
+    if (
+      error.response &&
+      error.response.status === 403 &&
+      error.response.data?.message === "This account has been suspended"
+    ) {
+      window.dispatchEvent(
+        new CustomEvent("force-logout", {
+          detail: { reason: "banned" },
+        }),
+      );
+    }
     return Promise.reject(error);
   },
 );

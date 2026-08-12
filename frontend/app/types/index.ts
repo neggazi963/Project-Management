@@ -10,6 +10,8 @@ export interface User {
   isEmailVerified: boolean;
   updatedAt: Date;
   profilePicture?: string;
+  isAdmin?: boolean;
+  isBanned?: boolean;
 }
 
 export interface Workspace {
@@ -72,6 +74,7 @@ export interface Project {
   isArchived: boolean;
   coverImage?: string | null;
   tags?: string[];
+  smartObjective?: SmartObjective;
 }
 
 export interface TaskTemplateItem {
@@ -283,4 +286,192 @@ export interface UpcomingDeadline {
   status: TaskStatus;
   priority: TaskPriority;
   projectTitle: string;
+}
+
+// ==========================================
+// LEARNING TYPES
+// ==========================================
+
+export interface LearningDomain {
+  _id: string;
+  name: string;
+  description?: string;
+  icon?: string;
+  slug: string;
+  createdBy: string;
+  pathCount?: number;
+  createdAt: string;
+}
+
+export type PathDifficulty = "beginner" | "intermediate" | "advanced";
+export type PublishStatus = "draft" | "published";
+
+export interface LearningPath {
+  _id: string;
+  domain: LearningDomain | string;
+  title: string;
+  description?: string;
+  difficulty: PathDifficulty;
+  status: PublishStatus;
+  noteOrder: LearningNote[] | string[];
+  createdBy: { _id: string; name: string; profilePicture?: string } | string;
+  tags: string[];
+  prerequisites:
+    | {
+        _id: string;
+        title: string;
+        difficulty: PathDifficulty;
+        stats: { averageRating: number };
+      }[]
+    | string[];
+  stats: {
+    averageRating: number;
+    ratingCount: number;
+    completionCount: number;
+    enrolledCount: number;
+  };
+  createdAt: string;
+}
+
+export interface LearningNote {
+  _id: string;
+  path: string;
+  title: string;
+  content: string;
+  order: number;
+  status: PublishStatus;
+  createdBy: { _id: string; name: string; profilePicture?: string } | string;
+  linkedNotes: { _id: string; title: string; status: PublishStatus }[];
+  relatedNotes?: {
+    _id: string;
+    title: string;
+    status: PublishStatus;
+    path: { _id: string; title: string } | string;
+  }[];
+  stats: { averageRating: number; ratingCount: number };
+  createdAt: string;
+}
+
+export interface LearningProgress {
+  _id: string;
+  user: string;
+  path: string | LearningPath;
+  completedNotes: string[];
+  currentNote: string | null;
+  completedAt?: string;
+}
+
+export interface LearningBadge {
+  key: string;
+  unlockedAt: string;
+}
+
+export interface LearningReputation {
+  _id?: string;
+  user: string | { _id: string; name: string; profilePicture?: string };
+  score: number;
+  breakdown: {
+    qualityScore: number;
+    impactScore: number;
+  };
+  badges: LearningBadge[];
+}
+
+export interface GraphNode {
+  id: string;
+  title: string;
+  status: PublishStatus;
+  order: number;
+  averageRating: number;
+  ratingCount: number;
+}
+
+export interface GraphEdge {
+  source: string;
+  target: string;
+  type?: "sequence" | "wikilink" | "reference";
+}
+
+export interface LearningGraph {
+  nodes: GraphNode[];
+  edges: GraphEdge[];
+}
+
+export interface DomainGraphNode {
+  id: string;
+  title: string;
+  pathId: string;
+  pathTitle: string;
+  averageRating: number;
+  ratingCount: number;
+}
+
+export interface DomainGraph {
+  domain: { name: string; slug: string };
+  pathCount: number;
+  nodes: DomainGraphNode[];
+  edges: GraphEdge[];
+}
+
+export interface PrerequisiteStatus {
+  _id: string;
+  title: string;
+  difficulty: PathDifficulty;
+  completed: boolean;
+}
+
+export interface RoadmapNode {
+  id: string;
+  title: string;
+  difficulty: PathDifficulty;
+  averageRating: number;
+  status: "not-started" | "in-progress" | "completed";
+}
+
+export interface DomainRoadmap {
+  domain: { name: string; slug: string };
+  nodes: RoadmapNode[];
+  edges: GraphEdge[];
+}
+
+export interface SuggestedPath {
+  _id: string;
+  title: string;
+  difficulty: PathDifficulty;
+  stats: { averageRating: number; ratingCount: number };
+}
+
+export interface DomainNoteForLinking {
+  _id: string;
+  title: string;
+  pathId: string;
+  pathTitle: string;
+}
+
+export type ReportStatus = "open" | "reviewed" | "dismissed";
+
+export interface LearningReport {
+  _id: string;
+  reportedBy: { _id: string; name: string; profilePicture?: string } | null;
+  targetType: "path" | "note" | "domain";
+  targetId: string;
+  reason: string;
+  details?: string;
+  status: ReportStatus;
+  target: {
+    _id: string;
+    title?: string;
+    name?: string;
+    status?: PublishStatus;
+    createdBy: { _id: string; name: string; isBanned?: boolean } | string;
+    path?: string;
+  } | null;
+  createdAt: string;
+}
+
+export interface SmartObjective {
+  specific?: string;
+  measurable?: string;
+  achievable?: string;
+  relevant?: string;
 }

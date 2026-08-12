@@ -44,7 +44,14 @@ const projectSchema = new Schema(
     },
     coverImage: { type: String, default: null },
     coverPosition: { type: Number, default: 50 },
+    smartObjective: {
+      specific: { type: String, trim: true },
+      measurable: { type: String, trim: true },
+      achievable: { type: String, trim: true },
+      relevant: { type: String, trim: true },
+    },
   },
+
   { timestamps: true },
 );
 

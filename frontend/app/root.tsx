@@ -7,6 +7,8 @@ import {
   ScrollRestoration,
 } from "react-router";
 import { ThemeProvider } from "@/provider/theme-provider";
+import { AuthProvider } from "@/provider/auth-context";
+import { SocketProvider } from "@/provider/socket-context";
 
 import type { Route } from "./+types/root";
 import "./app.css";
@@ -49,7 +51,13 @@ export function Layout({ children }: { children: React.ReactNode }) {
 export default function App() {
   return (
     <ReactQueryProvider>
-      <Outlet />
+      {/* 1. AuthProvider englobe l'application */}
+      <AuthProvider>
+        {/* 2. SocketProvider est imbriqué dans AuthProvider */}
+        <SocketProvider>
+          <Outlet />
+        </SocketProvider>
+      </AuthProvider>
     </ReactQueryProvider>
   );
 }

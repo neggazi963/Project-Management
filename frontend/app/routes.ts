@@ -33,6 +33,32 @@ export default [
     route("my-tasks", "routes/dashboard/my-tasks.tsx"),
     route("members", "routes/dashboard/members.tsx"),
     route("my-notes", "routes/dashboard/my-notes.tsx"),
+    route("learning", "routes/dashboard/learning/discover.tsx"),
+    route(
+      "learning/domains/:slug",
+      "routes/dashboard/learning/domain-view.tsx",
+    ),
+    route(
+      "learning/domains/:slug/graph",
+      "routes/dashboard/learning/domain-graph.tsx",
+    ),
+    route(
+      "learning/domains/:slug/roadmap",
+      "routes/dashboard/learning/domain-roadmap.tsx",
+    ),
+    route("learning/paths/:pathId", "routes/dashboard/learning/path-view.tsx"),
+    route("learning/my-paths", "routes/dashboard/learning/my-paths.tsx"),
+    route(
+      "learning/paths/:pathId/edit",
+      "routes/dashboard/learning/path-editor.tsx",
+    ),
+    route("learning/moderation", "routes/dashboard/learning/moderation.tsx"),
+    route(
+      "learning/paths/:pathId/graph",
+      "routes/dashboard/learning/path-graph.tsx",
+    ),
+    route("learning/my-progress", "routes/dashboard/learning/my-progress.tsx"),
+    route("learning/leaderboard", "routes/dashboard/learning/leaderboard.tsx"),
   ]),
 
   route(

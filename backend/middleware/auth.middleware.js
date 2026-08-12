@@ -22,6 +22,11 @@ const authMiddleware = async (req, res, next) => {
     }
 
     req.user = user;
+    if (req.user.isBanned) {
+      return res
+        .status(403)
+        .json({ message: "This account has been suspended" });
+    }
     next();
   } catch (error) {
     if (error.name === "TokenExpiredError") {

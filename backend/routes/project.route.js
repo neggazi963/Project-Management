@@ -16,6 +16,7 @@ import {
   updateProjectMemberRole,
   removeProjectMember,
   addProjectMember,
+  updateProjectObjective,
 } from "../controllers/project.controller.js";
 import {
   exportProjectCSV,
@@ -160,6 +161,21 @@ router.put(
     body: projectSchema,
   }),
   updateProject,
+);
+
+router.put(
+  "/:projectId/objective",
+  authMiddleware,
+  validateRequest({
+    params: z.object({ projectId: z.string() }),
+    body: z.object({
+      specific: z.string().optional(),
+      measurable: z.string().optional(),
+      achievable: z.string().optional(),
+      relevant: z.string().optional(),
+    }),
+  }),
+  updateProjectObjective,
 );
 
 export default router;

@@ -1,20 +1,33 @@
 import { useEffect } from "react";
 import { useSocket } from "@/provider/socket-context";
 
-/**
- * Rejoint une room socket tant que le composant est monté, la quitte au démontage.
- * Utilise-le dans les pages/composants qui affichent un projet ou une tâche.
- */
 export const useRoom = (room: string | null | undefined) => {
   const { socket, joinRoom, leaveRoom } = useSocket();
 
   useEffect(() => {
     if (!room || !socket) return;
-    console.log("🟡 joining room:", room);
 
-    joinRoom(room);
-    return () => {
-      leaveRoom(room);
+    // Fonction pour rejoindre la room
+    const handleJoin = () => {
+      
+      joinRoom(room);
     };
-  }, [room, socket]);
+
+    // 1. Si la socket est DEJA connectée, on rejoint immédiatement
+    if (socket.connected) {
+      handleJoin();
+    }
+
+    // 2. Si la socket se connecte ou SE RECONNECTE après coup, on rejoint à nouveau
+    socket.on("connect", handleJoin);
+
+    // Nettoyage au démontage
+    return () => {
+      socket.off("connect", handleJoin);
+      if (socket.connected) {
+        
+        leaveRoom(room);
+      }
+    };
+  }, [room, socket, joinRoom, leaveRoom]);
 };

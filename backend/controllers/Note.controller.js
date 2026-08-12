@@ -40,6 +40,7 @@ const createNote = async (req, res) => {
     });
 
     emitInvalidate(`project:${projectId}`, ["notes", projectId]);
+    emitInvalidate(`project:${projectId}`, ["global-search"]); // 🔄 Invalidation socket
 
     return res.status(201).json(note);
   } catch (error) {
@@ -111,6 +112,7 @@ const updateNote = async (req, res) => {
       "notes",
       note.project.toString(),
     ]);
+    emitInvalidate(`project:${note.project.toString()}`, ["global-search"]); // 🔄 Invalidation socket
 
     return res.status(200).json(note);
   } catch (error) {
@@ -146,6 +148,7 @@ const deleteNote = async (req, res) => {
     await note.deleteOne();
 
     emitInvalidate(`project:${projectId}`, ["notes", projectId]);
+    emitInvalidate(`project:${projectId}`, ["global-search"]); // 🔄 Invalidation socket
 
     return res.status(200).json({ message: "Note deleted successfully" });
   } catch (error) {

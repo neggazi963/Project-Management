@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import { useAuth } from "@/provider/auth-context";
 import type { Workspace } from "@/types";
 import { Button } from "../ui/button";
-import { Bell, PlusCircle } from "lucide-react";
+import { PlusCircle } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -18,6 +18,7 @@ import { WorkspaceAvatar } from "../workspace/workspace-avatar";
 import { ModeToggle } from "../mode-toggle";
 import { GlobalSearch } from "../global-search";
 import { NotificationBell } from "../notification-bell";
+import { useGetWorkspacesQuery } from "@/hooks/use-workspace"; // Ajustez le chemin vers vos hooks
 
 interface HeaderProps {
   onWorkspaceSelected: (workspace: Workspace) => void;
@@ -32,23 +33,28 @@ export const Header = ({
 }: HeaderProps) => {
   const navigate = useNavigate();
   const location = useLocation();
-
   const { user, logout } = useAuth();
-  const { workspaces } = useLoaderData() as { workspaces: Workspace[] };
+
+  // 1. Récupération dynamique via React Query pour réagir en temps réel aux mutations
+  const loaderData = useLoaderData() as any;
+  const initialWorkspaces: Workspace[] = Array.isArray(loaderData)
+    ? loaderData
+    : loaderData?.workspaces || loaderData?.data || [];
+
+  const { data: workspacesQuery } = useGetWorkspacesQuery();
+  const workspaces: Workspace[] = workspacesQuery || initialWorkspaces;
+
   const isOnWorkspacePage = location.pathname.includes("/workspace");
 
-  // 🔄 RESTAURATION AUTOMATIQUE AU RECHARGEMENT (F5)
+  // 🔄 RESTAURATION AUTOMATIQUE ET SUIVI DES CHANGEMENTS
   useEffect(() => {
     if (!workspaces || workspaces.length === 0) return;
 
-    // Si un workspace est déjà sélectionné, on met juste à jour le localStorage
     if (selectedWorkspace) {
       localStorage.setItem("active-workspace-id", selectedWorkspace._id);
       return;
     }
 
-    // Sinon (au F5 quand selectedWorkspace vaut null) :
-    // 1. Vérifier si un ID existe dans l'URL (?workspaceId=... ou /workspaces/ID)
     const queryParams = new URLSearchParams(location.search);
     const queryWorkspaceId = queryParams.get("workspaceId");
 
@@ -58,13 +64,9 @@ export const Header = ({
       workspaceIndex !== -1 ? pathSegments[workspaceIndex + 1] : null;
 
     const urlWorkspaceId = queryWorkspaceId || pathWorkspaceId;
-
-    // 2. Sinon récupérer la valeur enregistrée dans localStorage
     const savedWorkspaceId = localStorage.getItem("active-workspace-id");
-
     const targetId = urlWorkspaceId || savedWorkspaceId;
 
-    // 3. Retrouver l'objet workspace correspondant ou prendre le 1er par défaut
     const activeWorkspace =
       workspaces.find((w) => w._id === targetId) || workspaces[0];
 
@@ -102,7 +104,7 @@ export const Header = ({
                           name={selectedWorkspace.name}
                         />
                       )}
-                      <span className="font-medium">
+                      <span className="font-medium ml-2">
                         {selectedWorkspace?.name}
                       </span>
                     </>
@@ -113,28 +115,42 @@ export const Header = ({
               }
             />
 
-            <DropdownMenuContent>
+            <DropdownMenuContent align="start" className="w-56">
               <DropdownMenuGroup>
-                <DropdownMenuLabel>Workspace</DropdownMenuLabel>
+                <DropdownMenuLabel>Workspaces</DropdownMenuLabel>
                 <DropdownMenuSeparator />
               </DropdownMenuGroup>
 
               <DropdownMenuGroup>
-                {workspaces.map((ws) => (
-                  <DropdownMenuItem
-                    key={ws._id}
-                    onClick={() => handleOnClick(ws)}
-                  >
-                    {ws.color && (
-                      <WorkspaceAvatar color={ws.color} name={ws.name} />
-                    )}
-                    <span className="ml-2">{ws.name}</span>
-                  </DropdownMenuItem>
-                ))}
+                {workspaces && workspaces.length > 0 ? (
+                  workspaces.map((ws) => (
+                    <DropdownMenuItem
+                      key={ws._id}
+                      onClick={() => handleOnClick(ws)}
+                      className="cursor-pointer flex items-center justify-between"
+                    >
+                      <div className="flex items-center">
+                        {ws.color && (
+                          <WorkspaceAvatar color={ws.color} name={ws.name} />
+                        )}
+                        <span className="ml-2 font-medium">{ws.name}</span>
+                      </div>
+                    </DropdownMenuItem>
+                  ))
+                ) : (
+                  <div className="px-2 py-1.5 text-xs text-muted-foreground">
+                    No workspaces found
+                  </div>
+                )}
               </DropdownMenuGroup>
 
+              <DropdownMenuSeparator />
+
               <DropdownMenuGroup>
-                <DropdownMenuItem onClick={onCreateWorkspace}>
+                <DropdownMenuItem
+                  onClick={onCreateWorkspace}
+                  className="cursor-pointer"
+                >
                   <PlusCircle className="w-4 h-4 mr-2" />
                   Create Workspace
                 </DropdownMenuItem>
@@ -169,10 +185,14 @@ export const Header = ({
                 <DropdownMenuSeparator />
               </DropdownMenuGroup>
               <DropdownMenuItem>
-                <Link to="/user/profile">Profile</Link>
+                <Link to="/user/profile" className="w-full">
+                  Profile
+                </Link>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={logout}>Log Out</DropdownMenuItem>
+              <DropdownMenuItem onClick={logout} className="cursor-pointer">
+                Log Out
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>

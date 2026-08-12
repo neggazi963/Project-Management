@@ -1,5 +1,4 @@
 import { BackButton } from "@/components/back-button";
-import { Loader } from "@/components/loader";
 import { CreateTaskDialog } from "@/components/task/create-task-dialog";
 import { NotesTab } from "@/components/project/notes-tab";
 import { RoadmapTab } from "@/components/project/roadmap-tab";
@@ -14,7 +13,11 @@ import { useUpdateTaskStatusMutation } from "@/hooks/use-task";
 import { getProjectProgress } from "@/lib";
 import { cn } from "@/lib/utils";
 import type { Project, Task, TaskStatus } from "@/types";
+import { EisenhowerTab } from "@/components/project/eisenhower-tab";
 import { format } from "date-fns";
+import { ObjectiveDialog } from "@/components/project/objective-dialog";
+import { ObjectiveCard } from "@/components/project/objective-card";
+import { Target } from "lucide-react";
 import {
   AlertCircle,
   Calendar,
@@ -55,6 +58,71 @@ import {
 import { SaveAsTemplateDialog } from "@/components/project/save-as-template-dialog";
 import { LayoutTemplate } from "lucide-react";
 
+// Skeleton de chargement pour la page ProjectDetails
+const ProjectDetailsSkeleton = () => {
+  return (
+    <div className="space-y-8 animate-pulse">
+      {/* Cover Skeleton */}
+      <div className="w-full h-48 bg-muted rounded-xl" />
+
+      {/* Header section */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="space-y-3">
+          <div className="h-9 w-24 bg-muted rounded-md" />
+          <div className="h-8 w-64 bg-muted rounded" />
+          <div className="h-4 w-96 bg-muted rounded" />
+          <div className="flex flex-wrap gap-2 pt-4">
+            <div className="h-6 w-20 bg-muted rounded-full" />
+            <div className="h-6 w-32 bg-muted rounded-full" />
+            <div className="h-6 w-32 bg-muted rounded-full" />
+          </div>
+        </div>
+
+        {/* Action buttons Skeleton */}
+        <div className="flex flex-wrap gap-2">
+          <div className="h-10 w-24 bg-muted rounded-md" />
+          <div className="h-10 w-24 bg-muted rounded-md" />
+          <div className="h-10 w-28 bg-muted rounded-md" />
+        </div>
+      </div>
+
+      {/* Objective Card Skeleton */}
+      <div className="h-24 w-full bg-muted/60 rounded-xl" />
+
+      {/* Tabs Header Skeleton */}
+      <div className="flex flex-col sm:flex-row justify-between gap-4">
+        <div className="h-10 w-full sm:w-96 bg-muted rounded-lg" />
+        <div className="h-6 w-48 bg-muted rounded" />
+      </div>
+
+      {/* Kanban Board Skeleton */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {Array.from({ length: 3 }).map((_, colIndex) => (
+          <div key={colIndex} className="space-y-4">
+            <div className="flex justify-between items-center">
+              <div className="h-5 w-24 bg-muted rounded" />
+              <div className="h-5 w-8 bg-muted rounded-full" />
+            </div>
+            <div className="space-y-3">
+              {Array.from({ length: 2 }).map((_, cardIndex) => (
+                <Card key={cardIndex} className="h-32 bg-muted/40 border-muted">
+                  <CardHeader className="pb-2">
+                    <div className="h-4 w-16 bg-muted rounded" />
+                  </CardHeader>
+                  <CardContent className="space-y-2">
+                    <div className="h-4 w-3/4 bg-muted rounded" />
+                    <div className="h-3 w-1/2 bg-muted rounded" />
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
 const STATUSES: TaskStatus[] = ["To Do", "In Progress", "Done"];
 
 const ProjectDetails = () => {
@@ -70,8 +138,9 @@ const ProjectDetails = () => {
   const [taskFilter, setTaskFilter] = useState<TaskStatus | "All">("All");
   const [isEditProject, setIsEditProject] = useState(false);
   const [isManageMembers, setIsManageMembers] = useState(false);
-  const [isSaveTemplate, setIsSaveTemplate] = useState(false); // 👈 remonte ici
-  const [isExporting, setIsExporting] = useState(false); // 👈 remonte ici
+  const [isSaveTemplate, setIsSaveTemplate] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
+  const [isEditObjective, setIsEditObjective] = useState(false);
   const [activeTask, setActiveTask] = useState<Task | null>(null);
 
   const { data, isLoading } = UseProjectQuery(projectId!) as {
@@ -83,7 +152,7 @@ const ProjectDetails = () => {
   };
 
   const { mutate: updateTaskStatus } = useUpdateTaskStatusMutation();
-  const { exportProject } = useExportProject(); // 👈 aussi avant le return si tu l'appelles ici
+  const { exportProject } = useExportProject();
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -93,12 +162,7 @@ const ProjectDetails = () => {
 
   const { canEdit, canManage } = useProjectRole(data?.project);
 
-  if (isLoading || !data)
-    return (
-      <div>
-        <Loader />
-      </div>
-    );
+  if (isLoading || !data) return <ProjectDetailsSkeleton />;
 
   const { project, tasks } = data;
   const projectProgress = getProjectProgress(tasks);
@@ -267,6 +331,12 @@ const ProjectDetails = () => {
             </Button>
           )}
           {canManage && (
+            <Button variant="outline" onClick={() => setIsEditObjective(true)}>
+              <Target className="size-4 mr-2" />
+              Objective
+            </Button>
+          )}
+          {canManage && (
             <Button variant="outline" onClick={() => setIsManageMembers(true)}>
               <Users className="size-4 mr-2" />
               Members
@@ -298,9 +368,14 @@ const ProjectDetails = () => {
             projectId={project._id}
             defaultTitle={project.title}
           />
+          <ObjectiveDialog
+            open={isEditObjective}
+            onOpenChange={setIsEditObjective}
+            project={project}
+          />
         </div>
       </div>
-
+      <ObjectiveCard project={project} />
       <div className="flex items-center justify-between">
         <Tabs defaultValue="all" className="w-full">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
@@ -323,6 +398,9 @@ const ProjectDetails = () => {
               <TabsTrigger value="notes">Notes</TabsTrigger>
               <TabsTrigger value="roadmap">Roadmap</TabsTrigger>
               <TabsTrigger value="gantt">Gantt</TabsTrigger>
+              {canManage && (
+                <TabsTrigger value="eisenhower">Eisenhower</TabsTrigger>
+              )}
             </TabsList>
 
             <div className="flex items-center text-sm">
@@ -419,10 +497,14 @@ const ProjectDetails = () => {
           <TabsContent value="gantt" className="m-0">
             <GanttTab tasks={tasks} />
           </TabsContent>
+          {canManage && (
+            <TabsContent value="eisenhower" className="m-0">
+              <EisenhowerTab tasks={tasks} onTaskClick={handleTaskClick} />
+            </TabsContent>
+          )}
         </Tabs>
       </div>
 
-      {/* create    task dialog */}
       <CreateTaskDialog
         open={isCreateTask}
         onOpenChange={setIsCreateTask}
@@ -466,11 +548,11 @@ const TaskColumn = ({
       }
     >
       <div
-        ref={canDrag ? setNodeRef : undefined} // 👈 canDrag au lieu de draggable
+        ref={canDrag ? setNodeRef : undefined}
         className={cn(
           "space-y-4 rounded-lg transition-colors",
           !isFullWidth ? "h-full" : "col-span-full mb-4",
-          canDrag && isOver && "bg-muted/50 ring-2 ring-primary/30", // 👈 canDrag
+          canDrag && isOver && "bg-muted/50 ring-2 ring-primary/30",
         )}
       >
         {!isFullWidth && (
@@ -593,7 +675,7 @@ const TaskCard = ({
             {task.priority}
           </Badge>
 
-          {canEdit && ( // 👈 masque tout le bloc de boutons pour un viewer
+          {canEdit && (
             <div className="flex gap-1">
               {task.status !== "To Do" && (
                 <Button
@@ -653,7 +735,7 @@ const TaskCardContent = ({
 }) => {
   const content = (
     <CardContent>
-      <h4 className="ont-medium mb-2">{task.title}</h4>
+      <h4 className="font-medium mb-2">{task.title}</h4>
 
       {task.description && (
         <p className="text-sm text-muted-foreground line-clamp-2 mb-2">
@@ -692,7 +774,7 @@ const TaskCardContent = ({
           </div>
         )}
       </div>
-      {/* 5/10 subtasks */}
+
       {task.subtasks && task.subtasks.length > 0 && (
         <div className="mt-2 text-xs text-muted-foreground">
           {task.subtasks.filter((subtask) => subtask.completed).length} /{" "}

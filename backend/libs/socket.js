@@ -5,6 +5,48 @@ import { isAllowedOrigin } from "./cors-origins.js";
 
 let io;
 
+// Présence en temps réel : room -> Map<socketId, { _id, name, profilePicture }>
+// Volontairement en mémoire, jamais persisté — c'est un état éphémère de "qui est là maintenant".
+const roomPresence = new Map();
+
+const getPresenceList = (room) => {
+  const presenceMap = roomPresence.get(room);
+  if (!presenceMap) return [];
+
+  // Dédoublonne par userId (si le même utilisateur a 2 onglets ouverts, il n'apparaît qu'une fois)
+  const seen = new Map();
+  for (const userInfo of presenceMap.values()) {
+    seen.set(userInfo._id, userInfo);
+  }
+  return Array.from(seen.values());
+};
+
+const broadcastPresence = (room) => {
+  if (!io) return;
+  io.to(room).emit("presence:update", {
+    room,
+    users: getPresenceList(room),
+  });
+};
+
+const addPresence = (socket, room) => {
+  if (!roomPresence.has(room)) {
+    roomPresence.set(room, new Map());
+  }
+  roomPresence.get(room).set(socket.id, socket.userInfo);
+  broadcastPresence(room);
+};
+
+const removePresence = (socket, room) => {
+  const presenceMap = roomPresence.get(room);
+  if (!presenceMap) return;
+  presenceMap.delete(socket.id);
+  if (presenceMap.size === 0) {
+    roomPresence.delete(room);
+  }
+  broadcastPresence(room);
+};
+
 export const initSocket = (httpServer) => {
   io = new Server(httpServer, {
     cors: {
@@ -36,6 +78,11 @@ export const initSocket = (httpServer) => {
       }
 
       socket.userId = user._id.toString();
+      socket.userInfo = {
+        _id: user._id.toString(),
+        name: user.name,
+        profilePicture: user.profilePicture,
+      };
       next();
     } catch (error) {
       next(new Error("Unauthorized: invalid token"));
@@ -45,21 +92,32 @@ export const initSocket = (httpServer) => {
   io.on("connection", (socket) => {
     socket.join(socket.userId);
 
+    // Rooms suivies en présence pour CE socket (pour un nettoyage propre à la déconnexion)
+    const presenceRooms = new Set();
+
     socket.on("join-room", (room) => {
-      if (typeof room === "string" && room.length < 200) {
-        socket.join(room);
+      if (typeof room !== "string" || room.length >= 200) return;
+      socket.join(room);
+
+      // La présence n'a de sens que pour les rooms de type "task:xxx" pour l'instant
+      if (room.startsWith("task:")) {
+        presenceRooms.add(room);
+        addPresence(socket, room);
       }
     });
 
     socket.on("leave-room", (room) => {
-      if (typeof room === "string") {
-        socket.leave(room);
+      if (typeof room !== "string") return;
+      socket.leave(room);
+
+      if (presenceRooms.has(room)) {
+        presenceRooms.delete(room);
+        removePresence(socket, room);
       }
     });
 
     // --- Collaboration temps réel sur la roadmap Excalidraw ---
 
-    // Position du curseur : relayé brut, jamais stocké en DB
     socket.on("roadmap:cursor", ({ room, x, y, name, color }) => {
       if (typeof room !== "string") return;
       socket.to(room).emit("roadmap:cursor", {
@@ -71,7 +129,6 @@ export const initSocket = (httpServer) => {
       });
     });
 
-    // Mise à jour du dessin : relayée aux autres clients de la room
     socket.on("roadmap:scene-update", ({ room, elements }) => {
       if (typeof room !== "string") return;
       socket.to(room).emit("roadmap:scene-update", {
@@ -80,18 +137,20 @@ export const initSocket = (httpServer) => {
       });
     });
 
-    // Prévient les autres qu'un utilisateur quitte la page roadmap
     socket.on("roadmap:leave", ({ room }) => {
       if (typeof room !== "string") return;
       socket.to(room).emit("roadmap:cursor-leave", { socketId: socket.id });
     });
 
-    // Nettoyage automatique si l'utilisateur ferme l'onglet / perd la connexion
     socket.on("disconnecting", () => {
       for (const room of socket.rooms) {
         if (room !== socket.id) {
           socket.to(room).emit("roadmap:cursor-leave", { socketId: socket.id });
         }
+      }
+      // Nettoyage de la présence sur toutes les rooms suivies par ce socket
+      for (const room of presenceRooms) {
+        removePresence(socket, room);
       }
     });
   });
@@ -103,9 +162,6 @@ export const emitToUser = (userId, event, payload) => {
   io.to(userId.toString()).emit(event, payload);
 };
 
-// Diffuse une invalidation de cache React Query à toutes les rooms données.
-// `rooms` peut être une string ou un tableau de strings.
-// `queryKey` doit correspondre exactement à la queryKey React Query côté client.
 export const emitInvalidate = (rooms, queryKey) => {
   if (!io) return;
   const roomList = Array.isArray(rooms) ? rooms : [rooms];

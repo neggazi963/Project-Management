@@ -117,7 +117,8 @@ const getProjectTasks = async (req, res) => {
     }
 
     const isMember = project.members.some(
-      (member) => member.user._id.toString() === req.user._id.toString(),
+      (member) =>
+        member.user && member.user._id.toString() === req.user._id.toString(),
     );
 
     if (!isMember) {
@@ -622,6 +623,41 @@ const addProjectMember = async (req, res) => {
   }
 };
 
+const updateProjectObjective = async (req, res) => {
+  try {
+    const { projectId } = req.params;
+    const { specific, measurable, achievable, relevant } = req.body;
+
+    const project = await Project.findById(projectId);
+    if (!project) {
+      return res.status(404).json({ message: "Project not found" });
+    }
+
+    const { allowed } = hasProjectPermission(project, req.user._id, "manager");
+
+    if (!allowed) {
+      return res.status(403).json({
+        message: "You need manager access to set the project objective",
+      });
+    }
+
+    project.smartObjective = {
+      specific: specific ?? project.smartObjective?.specific ?? "",
+      measurable: measurable ?? project.smartObjective?.measurable ?? "",
+      achievable: achievable ?? project.smartObjective?.achievable ?? "",
+      relevant: relevant ?? project.smartObjective?.relevant ?? "",
+    };
+
+    await project.save();
+
+    emitInvalidate(`project:${projectId}`, ["project", projectId]);
+
+    res.status(200).json(project);
+  } catch (error) {
+    console.log(error);
+    return res.status(500).json({ message: "Internal server error" });
+  }
+};
 export {
   createProject,
   getProjectDetails,
@@ -637,4 +673,5 @@ export {
   updateProjectMemberRole,
   removeProjectMember,
   addProjectMember,
+  updateProjectObjective,
 };

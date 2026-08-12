@@ -1,4 +1,11 @@
-import { createContext, useContext, useEffect, useRef, useState } from "react";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+  useCallback,
+} from "react";
 import { io, type Socket } from "socket.io-client";
 import { useAuth } from "./auth-context";
 import { useQueryClient } from "@tanstack/react-query";
@@ -37,6 +44,7 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const socketRef = useRef<Socket | null>(null);
+  const activeRoomsRef = useRef<Set<string>>(new Set());
   const [, forceRender] = useState(0);
 
   useEffect(() => {
@@ -53,9 +61,12 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
       withCredentials: true,
     });
 
-    // 👇 ajoute ces 2 blocs ici
     socket.on("connect", () => {
       console.log("🟢 socket connected:", socket.id);
+      // Réémet join-room pour chaque room active après connexion
+      activeRoomsRef.current.forEach((room) => {
+        socket.emit("join-room", room);
+      });
     });
 
     socket.on("connect_error", (err) => {
@@ -72,10 +83,7 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
       queryClient.invalidateQueries({ queryKey: ["notifications"] });
     });
 
-    // Écoute générique : n'importe quel controller backend peut déclencher
-    // une invalidation de cache en émettant emitInvalidate(room, queryKey)
     socket.on("invalidate", (payload: InvalidatePayload) => {
-      console.log("🔵 invalidate received:", payload);
       if (Array.isArray(payload?.queryKey)) {
         queryClient.invalidateQueries({ queryKey: payload.queryKey });
       }
@@ -87,16 +95,25 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
     return () => {
       socket.disconnect();
       socketRef.current = null;
+      activeRoomsRef.current.clear();
     };
   }, [user?._id]);
 
-  const joinRoom = (room: string) => {
-    socketRef.current?.emit("join-room", room);
-  };
+  const joinRoom = useCallback((room: string) => {
+    if (!room) return;
+    activeRoomsRef.current.add(room);
+    if (socketRef.current?.connected) {
+      socketRef.current.emit("join-room", room);
+    }
+  }, []);
 
-  const leaveRoom = (room: string) => {
-    socketRef.current?.emit("leave-room", room);
-  };
+  const leaveRoom = useCallback((room: string) => {
+    if (!room) return;
+    activeRoomsRef.current.delete(room);
+    if (socketRef.current?.connected) {
+      socketRef.current.emit("leave-room", room);
+    }
+  }, []);
 
   return (
     <SocketContext.Provider

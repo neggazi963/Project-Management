@@ -41,6 +41,14 @@ const userSchema = new Schema(
       type: Date,
       select: false,
     },
+    isAdmin: {
+      type: Boolean,
+      default: false,
+    },
+    isBanned: {
+      type: Boolean,
+      default: false,
+    },
   },
   { timestamps: true },
 );

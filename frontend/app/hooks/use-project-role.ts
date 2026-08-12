@@ -13,7 +13,8 @@ export const useProjectRole = (project: Project | undefined) => {
   const { user } = useAuth();
 
   const role: ProjectRole =
-    project?.members.find((m) => m.user._id === user?._id)?.role ?? null;
+    project?.members.find((m) => m.user && m.user._id === user?._id)?.role ??
+    null;
 
   const hasAtLeast = (minRole: Exclude<ProjectRole, null>) => {
     if (!role) return false;
@@ -24,7 +25,7 @@ export const useProjectRole = (project: Project | undefined) => {
     role,
     isManager: role === "manager",
     isContributor: hasAtLeast("contributor"),
-    canEdit: hasAtLeast("contributor"), // créer/modifier tâches, commenter, etc.
-    canManage: hasAtLeast("manager"), // supprimer tâches, modifier projet, membres
+    canEdit: hasAtLeast("contributor"),
+    canManage: hasAtLeast("manager"),
   };
 };

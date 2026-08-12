@@ -6,6 +6,7 @@ import {
   updateData,
   postFormData,
 } from "@/lib/fetch-util";
+import type { SmartObjective } from "@/types";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 export const UseCreateProject = () => {
@@ -211,5 +212,16 @@ export const useAddProjectMemberMutation = () => {
         queryKey: ["project", variables.projectId],
       });
     },
+  });
+};
+
+export const useUpdateProjectObjectiveMutation = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: { projectId: string } & SmartObjective) => {
+      const { projectId, ...body } = data;
+      return updateData(`/projects/${projectId}/objective`, body);
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["project"] }),
   });
 };

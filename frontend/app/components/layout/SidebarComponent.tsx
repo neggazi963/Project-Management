@@ -2,10 +2,14 @@ import type { Workspace } from "@/types";
 import { useAuth } from "@/provider/auth-context";
 import { useState } from "react";
 import {
+  Boxes,
   CheckCircle2,
   ChevronsLeft,
   ChevronsRight,
+  FolderKanban,
+  GraduationCap, Grid, // 👈 ajoute cet import
   LayoutDashboard,
+  LayoutGrid,
   ListChecks,
   LogOut,
   NotebookPen,
@@ -35,24 +39,28 @@ export const SidebarComponent = ({
     {
       title: "Workspaces",
       href: "/workspaces",
-      icon: Users,
+      icon: Boxes,
     },
     {
       title: "My Tasks",
       href: "/my-tasks",
       icon: ListChecks,
     },
-     {
+    {
       title: "My Notes",
       href: "/my-notes",
-      icon:  NotebookPen,
+      icon: NotebookPen,
+    },
+    {
+      title: "Learning", 
+      href: "/learning",
+      icon: GraduationCap,
     },
     {
       title: "Members",
       href: "/members",
       icon: Users,
     },
-   
   ];
 
   return (
