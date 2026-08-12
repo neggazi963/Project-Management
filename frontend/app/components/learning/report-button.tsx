@@ -35,7 +35,7 @@ const REASONS = [
 
 export const ReportButton = ({ targetType, targetId }: ReportButtonProps) => {
   const [open, setOpen] = useState(false);
-  const [reason, setReason] = useState("inaccurate");
+  const [reason, setReason] = useState<string>("inaccurate");
   const [details, setDetails] = useState("");
   const { mutate: report, isPending } = useReportContentMutation();
 
@@ -74,7 +74,10 @@ export const ReportButton = ({ targetType, targetId }: ReportButtonProps) => {
           <div className="space-y-4">
             <Field>
               <FieldLabel>Reason</FieldLabel>
-              <Select value={reason} onValueChange={setReason}>
+              <Select
+                value={reason}
+                onValueChange={(val) => setReason(val ?? "inaccurate")}
+              >
                 <SelectTrigger className="w-full">
                   <SelectValue />
                 </SelectTrigger>
