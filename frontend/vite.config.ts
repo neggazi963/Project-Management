@@ -10,7 +10,7 @@ const __dirname = path.dirname(__filename);
 export default defineConfig(({ command }) => ({
   plugins: [reactRouter(), tailwindcss()],
 
-  base: command === "serve" ? "/" : "./",
+  base: "/",
 
   resolve: {
     alias: {
