@@ -5,7 +5,7 @@ import projectRoutes from "./project.route.js";
 import taskRoutes from "./task.route.js";
 import userRoutes from "./user.route.js";
 import noteRoutes from "./Note.route.js";
-import searchRoutes from "./search.route.js";
+import searchRoutes from "./Search.route.js";
 import notificationRoutes from "./Notification.route.js";
 import templateRoutes from "./template.route.js";
 import learningRoutes from "./learning.route.js";

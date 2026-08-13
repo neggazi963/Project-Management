@@ -1,7 +1,7 @@
 import Workspace from "../models/workspace.model.js";
 import Project from "../models/project.model.js";
 import Task from "../models/task.model.js";
-import Note from "../models/note.model.js";
+import Note from "../models/Note.model.js";
 
 const globalSearch = async (req, res) => {
   try {
