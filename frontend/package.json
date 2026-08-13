@@ -1,5 +1,8 @@
 {
   "name": "frontend",
+  "version": "1.0.0",
+  "description": "Project management application",
+  "author": "Mohcen Neggazi",
   "private": true,
   "type": "module",
   "scripts": {

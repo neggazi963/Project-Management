@@ -1,4 +1,4 @@
-import Notification from "../models/notification.model.js";
+import Notification from "../models/Notification.model.js";
 import { emitToUser } from "./socket.js";
 
 export const notify = async ({ recipient, sender, type, message, link }) => {
