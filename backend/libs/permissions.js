@@ -5,12 +5,22 @@ const ROLE_LEVELS = {
   manager: 2,
 };
 
+// Extrait l'ID utilisateur d'un membre, que member.user soit un ObjectId
+// brut ou un objet peuplé (populate) contenant _id.
+const getUserId = (user) => {
+  if (!user) return null;
+  if (typeof user === "object" && user._id) {
+    return user._id.toString();
+  }
+  return user.toString();
+};
+
 /**
  * Retourne le rôle de l'utilisateur dans ce projet, ou null s'il n'est pas membre.
  */
 export const getProjectRole = (project, userId) => {
   const member = project.members.find(
-    (m) => m.user.toString() === userId.toString(),
+    (m) => getUserId(m.user) === userId.toString(),
   );
   return member ? member.role : null;
 };
