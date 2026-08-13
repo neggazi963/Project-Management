@@ -9,12 +9,20 @@ const ROLE_LEVELS: Record<Exclude<ProjectRole, null>, number> = {
   manager: 2,
 };
 
+const getUserId = (user: unknown): string | undefined => {
+  if (!user) return undefined;
+  if (typeof user === "string") return user;
+  if (typeof user === "object" && "_id" in (user as any)) {
+    return (user as any)._id;
+  }
+  return undefined;
+};
+
 export const useProjectRole = (project: Project | undefined) => {
   const { user } = useAuth();
 
   const role: ProjectRole =
-    project?.members.find((m) => m.user && m.user._id === user?._id)?.role ??
-    null;
+    project?.members.find((m) => getUserId(m.user) === user?._id)?.role ?? null;
 
   const hasAtLeast = (minRole: Exclude<ProjectRole, null>) => {
     if (!role) return false;
