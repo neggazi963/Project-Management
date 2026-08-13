@@ -1,4 +1,4 @@
-import Note from "../models/note.model.js";
+import Note from "../models/Note.model.js";
 import Project from "../models/project.model.js";
 import { hasProjectPermission } from "../libs/permissions.js";
 import { emitInvalidate } from "../libs/socket.js";
